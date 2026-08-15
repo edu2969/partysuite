@@ -1,7 +1,8 @@
 import { Genos } from 'next/font/google'
 import type { Metadata } from 'next'
-import './globals.css'
+import '../globals.css'
 import AuthProviders from '@/app/providers/AuthProvider'
+import NavBar from '@/components/NavBar'
 
 const genos = Genos({ subsets: ['latin'] })
 
@@ -15,13 +16,8 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  return (    
-    <html lang="es_CL">
-      <body className={`${genos.className} bg-black`}> 
-        <AuthProviders>
+  return (<AuthProviders>
+          <NavBar />
           {children}
-        </AuthProviders>
-      </body>
-    </html>
-  )
+        </AuthProviders>)
 }
