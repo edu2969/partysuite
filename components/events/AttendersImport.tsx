@@ -47,8 +47,7 @@ export default function AttendersImport({
         }
 
         const data = await response.json();
-
-        setEvent(data.event);
+        setEvent(data);
       } catch (error) {
         console.error(error);
       } finally {
@@ -103,6 +102,8 @@ export default function AttendersImport({
       const data: ImportMessages = await response.json();
 
       if (!response.ok && !data.danger) {
+        console.log("DATA", entradas.join("/n"));
+        setText(entradas.join("/n"));
         throw new Error(
           "No fue posible realizar la importación"
         );
@@ -113,7 +114,9 @@ export default function AttendersImport({
       setText(data.wrongRuts || "");
     } catch (error) {
       console.error(error);
-
+      console.log("DATA", entradas.join("/n"));
+      setText(entradas.join("/n"));
+        
       setMessages({
         danger: [
           {
@@ -174,7 +177,7 @@ export default function AttendersImport({
     <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
 
       <div className="mb-6">
-        <h3 className="flex items-center gap-2 text-2xl font-semibold text-white">
+        <h3 className="flex items-center gap-2 text-3xl font-semibold text-white">
           <span>↓</span>
           {event.name}
         </h3>
@@ -183,10 +186,13 @@ export default function AttendersImport({
           Importación de Invitados
         </h4>
 
-        <span className="mt-3 inline-flex items-center gap-2 rounded-md bg-yellow-500/10 px-3 py-2 text-sm text-yellow-300">
-          <span>⚠</span>
+        <div className="flex flex-col mt-3 gap-2 rounded-md bg-yellow-500/10 px-3 py-2 text-xl text-yellow-300">
+          <p className="text-sm">Pega acá una lista de invitados</p>
+          <div className="flex">
+          <p className="mr-4">⚠</p>          
           Formato: [Nombre(s) Apellido(s) Rut]
-        </span>
+          </div>
+        </div>
       </div>
 
       <div className="mb-5">
@@ -196,7 +202,7 @@ export default function AttendersImport({
           onKeyDown={handleKeyDown}
           placeholder={`Ejemplo:
 Juan Perez 12.345.678-5
-Maria Gonzalez 15.234.567-8`}
+Maria Gonzalez 15234567-8`}
           rows={8}
           disabled={importing}
           className="block w-full resize-none rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 font-mono text-sm text-gray-100 shadow-sm outline-none transition placeholder:text-gray-600 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 disabled:opacity-50"
@@ -209,7 +215,7 @@ Maria Gonzalez 15.234.567-8`}
           {messages.danger &&
             messages.danger.length > 0 && (
               <div
-                className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300"
+                className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-xl text-red-300"
                 role="alert"
               >
                 {messages.danger.map(
@@ -234,7 +240,7 @@ Maria Gonzalez 15.234.567-8`}
           {messages.warning &&
             messages.warning.length > 0 && (
               <div
-                className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-4 text-sm text-yellow-300"
+                className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-4 text-xl text-yellow-300"
                 role="alert"
               >
                 {messages.warning.map(
@@ -259,7 +265,7 @@ Maria Gonzalez 15.234.567-8`}
           {messages.success &&
             messages.success.length > 0 && (
               <div
-                className="rounded-lg border border-green-500/30 bg-green-500/10 p-4 text-sm text-green-300"
+                className="rounded-lg border border-green-500/30 bg-green-500/10 p-4 text-xl text-green-300"
                 role="alert"
               >
                 {messages.success.map(
@@ -289,7 +295,7 @@ Maria Gonzalez 15.234.567-8`}
           type="button"
           onClick={handleImport}
           disabled={importing}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/50 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-3 text-2xl font-semibold text-white shadow-sm transition hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/50 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {importing ? (
             <>

@@ -36,7 +36,7 @@ export default function TopNavigator() {
 
             {/* Barra Superior */}
 
-            <div className={`fixed top-0 left-0 z-50 ${pathname === "/" ? "hidden" : ""}`}>
+            {!menuActivo && <div className={`fixed top-0 left-0 z-50 ${pathname === "/" ? "hidden" : ""}`}>
 
                 <div className="flex items-center justify-between bg-transparent p-4">
 
@@ -48,7 +48,7 @@ export default function TopNavigator() {
 
                 </div>
 
-            </div>
+            </div>}
 
             {/* Panel lateral */}
 
@@ -71,18 +71,18 @@ export default function TopNavigator() {
                     alt="Marco"
                     fill
                     priority
-                    className="object-fill pointer-events-none select-none"
+                    className="object-fill pointer-events-none select-none py-10"
                 />
 
                 <div className="relative h-full p-8">
 
                     <FaXmark
                         size={34}
-                        className="absolute top-8 right-8 cursor-pointer text-cyan-300 hover:text-white"
+                        className="absolute top-20 right-8 cursor-pointer text-cyan-300 hover:text-white"
                         onClick={() => setMenuActivo(false)}
                     />
 
-                    <div className="mt-16 space-y-2 text-cyan-300">
+                    <div className="mt-24 space-y-2 text-cyan-300">
 
                         {/* Eventos */}
 
@@ -92,19 +92,6 @@ export default function TopNavigator() {
                             text="Eventos"
                             close={() => setMenuActivo(false)}
                         />
-
-                        {/* Crear Evento */}
-
-                        {isRPAdmin && (
-
-                            <MenuItem
-                                href="/events/new"
-                                icon={<FaPlus size={26} />}
-                                text="Nuevo Evento"
-                                close={() => setMenuActivo(false)}
-                            />
-
-                        )}
 
                         {/* Administración */}
 
@@ -165,7 +152,7 @@ export default function TopNavigator() {
                     <button
                         className="
                             absolute
-                            bottom-10
+                            bottom-16
                             left-28
                             flex
                             items-center

@@ -9,8 +9,12 @@ export interface Guest {
   gender?: 'F' | 'M'
 }
 
+export interface ImportMessageItem {
+  item: string;
+}
+
 export interface ImportMessages {
-  danger?: string[]
-  warning?: string[]
-  success?: string[]
+  danger?: ImportMessageItem[]
+  warning?: ImportMessageItem[]
+  success?: ImportMessageItem[]
 }

@@ -18,11 +18,17 @@ interface EventData {
 
 interface RPData {
   _id: string;
-  nombre: string;
-  inscritos: number;
   asisten: number;
-  porcentajeEfectividad: string;
-  porcentajeAsistencia: string;
+  createdAt: Date;
+  eventoId: string;
+  inscritos: number;
+  rpId: {
+    _id: string;
+    email: string;
+    role: string;
+    name: string;
+  }
+  updatedAt: Date;
 }
 
 interface EventForm {
@@ -68,7 +74,7 @@ function timeToMilliseconds(time: string) {
   );
 }
 
-export default function EventEdit({ eventId }: EventEditProps) {
+export default function EventForm({ eventId }: EventEditProps) {
   const router = useRouter();
 
   const [event, setEvent] = useState<EventData | null>(null);
@@ -92,7 +98,7 @@ export default function EventEdit({ eventId }: EventEditProps) {
   useEffect(() => {
     const load = async () => {
       try {
-        if (eventId) {
+        if (eventId !== "new") {
           const response = await fetch(
             `/api/events/${eventId}`
           );
@@ -103,24 +109,20 @@ export default function EventEdit({ eventId }: EventEditProps) {
 
           const data = await response.json();
 
-          setEvent(data.event);
+          setEvent(data);
 
           reset({
-            name: data.event.name,
-            date: formatDateInput(data.event.date),
-            closeTime: formatCloseTime(data.event.closeTime),
+            name: data.name,
+            date: formatDateInput(data.date),
+            closeTime: formatCloseTime(data.closeTime),
           });
-        }
+        } 
 
-        const biResponse = await fetch(
-          eventId
-            ? `/api/events/${eventId}/birps`
-            : `/api/events/birps`
-        );
-
+        const biResponse = await fetch(`/api/events/${eventId}/bi`);        
         if (biResponse.ok) {
           const biData = await biResponse.json();
-          setRps(biData.rps || []);
+          console.log("BiResponse", biData);
+          setRps(biData || []);
         }
       } catch (err) {
         console.error(err);
@@ -145,11 +147,11 @@ export default function EventEdit({ eventId }: EventEditProps) {
       };
 
       const response = await fetch(
-        eventId
+        eventId !== "new"
           ? `/api/events/${eventId}`
           : `/api/events`,
         {
-          method: eventId ? "PUT" : "POST",
+          method: eventId !== "new" ? "PUT" : "POST",
           headers: {
             "Content-Type": "application/json",
           },
@@ -191,7 +193,7 @@ export default function EventEdit({ eventId }: EventEditProps) {
   const totalArrives = event?.arrives || 0;
 
   return (
-    <main className="mx-auto w-full max-w-6xl p-6">
+    <main className="mx-auto w-full max-w-6xl p-6 h-screen overflow-y-scroll">
 
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white">
@@ -328,25 +330,25 @@ export default function EventEdit({ eventId }: EventEditProps) {
 
               <tbody>
 
-                {rps.map((rp, index) => (
+                {rps.map((biReg, index) => (
                   <tr
-                    key={rp._id}
+                    key={biReg._id}
                     className="border-b border-slate-800 text-gray-300"
                   >
                     <td className="px-3 py-3">
-                      {index + 1}. {rp.nombre}
+                      {index + 1}. {biReg.rpId.name}
                     </td>
 
                     <td className="px-3 py-3">
-                      {rp.asisten} de {rp.inscritos}
+                      {biReg.asisten} de {biReg.inscritos}
                     </td>
 
                     <td className="px-3 py-3 text-cyan-400">
-                      {rp.porcentajeEfectividad}
+                      {(biReg.inscritos / biReg.asisten * 100).toFixed(1)}%
                     </td>
 
                     <td className="px-3 py-3 text-cyan-400">
-                      {rp.porcentajeAsistencia}
+                      {biReg.asisten}
                     </td>
                   </tr>
                 ))}
@@ -361,17 +363,11 @@ export default function EventEdit({ eventId }: EventEditProps) {
                     </td>
                   </tr>
                 )}
-
               </tbody>
-
             </table>
-
           </div>
-
         </div>
-
       </section>
-
     </main>
   );
 }
@@ -381,6 +377,7 @@ function PieChart({
 }: {
   rps: RPData[];
 }) {
+  console.log("RPs", rps)
   const total = rps.reduce(
     (sum, rp) => sum + (rp.asisten || 0),
     0
@@ -449,7 +446,7 @@ function PieChart({
                 }}
               />
 
-              {rp.nombre} ({rp.asisten})
+              {rp.rpId.name} ({rp.asisten})
             </div>
           ))}
       </div>

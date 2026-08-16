@@ -1,16 +1,22 @@
-// Reemplaza moment().format('HH:mm:ss'). Si prefieres seguir usando moment o
-// dayjs, instálalo y sustituye estas dos funciones.
+export const formatClock = (date = new Date()) =>
+    new Intl.DateTimeFormat("es-CL", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+    }).format(date);
 
-export function formatClock(date: Date = new Date()): string {
-  const pad = (n: number) => n.toString().padStart(2, '0')
-  return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
-}
+export const formatHoraNocturna = (value: string | Date | number) => {
+    if (typeof value === "number") {
+        const hours = Math.floor(value / 3_600_000) % 24;
+        const minutes = Math.floor((value % 3_600_000) / 60_000);
 
-// Equivalente al helper de Blaze `formatoHoraNocturno` usado en el template
-// original (no estaba en el JS que compartiste, así que se reimplementa
-// asumiendo formato 24h HH:mm). Ajusta si tu helper original hacía algo distinto.
-export function formatHoraNocturna(date: string | Date): string {
-  const d = typeof date === 'string' ? new Date(date) : date
-  const pad = (n: number) => n.toString().padStart(2, '0')
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
+        return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+    }
+
+    return new Intl.DateTimeFormat("es-CL", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+    }).format(typeof value === "string" ? new Date(value) : value);
+};

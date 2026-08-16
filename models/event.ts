@@ -1,4 +1,4 @@
-import mongoose, { Schema, models, model } from "mongoose";
+import { Schema, models, model } from "mongoose";
 
 const EventSchema = new Schema(
   {
@@ -38,16 +38,6 @@ const EventSchema = new Schema(
     },
 
     arrives: {
-      type: Number,
-      default: 0,
-    },
-
-    male: {
-      type: Number,
-      default: 0,
-    },
-
-    female: {
       type: Number,
       default: 0,
     },

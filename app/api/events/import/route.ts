@@ -5,8 +5,8 @@ import Guest from "@/models/guest";
 import Attender from "@/models/attender";
 import BIRP from "@/models/birp";
 import User from "@/models/user";
-import CheckRut from "@/app/utils/rut";
-import { getSession } from "next-auth/react";
+import { checkRut } from "@/app/utils/rut";
+import { auth } from "@/app/utils/auth";
 
 interface ImportRequest {
   entradas: string[];
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
   try {
     await connectMongoDB();
 
-    const session = await getSession();
+    const session = await auth();
 
     if (!session?.user?.id) {
       return NextResponse.json(
@@ -45,6 +45,8 @@ export async function POST(request: NextRequest) {
 
     const body: ImportRequest = await request.json();
     const { entradas, eventId } = body;
+
+    console.log("Entradas", entradas, eventId)
 
     if (!Array.isArray(entradas) || !eventId) {
       return NextResponse.json(
@@ -132,7 +134,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      if (CheckRut(rut)) {
+      if (checkRut(rut)) {
         const rutNoDv = rut.substring(0, rut.length - 1);
 
         let guest = await Guest.findOne({
@@ -169,7 +171,7 @@ export async function POST(request: NextRequest) {
             if (rp) {
               addMessage(
                 "warning",
-                `${guest.names} inscrito por: ${rp.username}`
+                `${guest.names} inscrito por: ${rp.name}`
               );
             } else {
               console.log(`No RP!: ${attender.rpId}`);

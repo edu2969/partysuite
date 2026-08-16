@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BiParty } from "react-icons/bi";
+import Link from "next/link";
+import { FaPlus } from "react-icons/fa6";
 
 interface EventData {
   _id: string;
@@ -70,8 +72,8 @@ export default function EventsList({
       }
 
       const data = await response.json();
-
-      setEvents(data.events || []);
+      console.log("DATA", data);
+      setEvents(data || []);
     } catch (error) {
       console.error(error);
 
@@ -87,13 +89,13 @@ export default function EventsList({
 
   const handleEdit = (eventId: string) => {
     router.push(
-      `/eventEdit/${eventId}`
+      `/events/${eventId}`
     );
   };
 
   const handleImport = (eventId: string) => {
     router.push(
-      `/eventImport/${eventId}`
+      `/events/import/${eventId}`
     );
   };
 
@@ -205,14 +207,18 @@ export default function EventsList({
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
 
-      <div className="mb-8">
-        <h1 className="flex items-center gap-3 text-3xl font-bold text-white">
+      <div className="flex mb-8 space-x-3">
+        <h1 className="flex w-full justify-left gap-3 text-3xl font-bold text-white text-nowrap">
           <span className="text-cyan-400">
             <BiParty />
           </span>
-
-          Listado de Eventos
+          Listado de Eventos!
         </h1>
+        <div className="flex justify-end w-full text-right text-2xl">
+          <div className="rounded-md bg-cyan-600 text-white hover:bg-cyan-500">
+            <Link className="flex gap-2 px-5 py-2 items-center" href="/events/new"><FaPlus /> Nuevo evento</Link>
+          </div>
+        </div>
       </div>
 
       {error && (
@@ -240,10 +246,10 @@ export default function EventsList({
 
                 <div className="min-w-0">
 
-                  <h2 className="text-xl font-semibold text-white">
+                  <h2 className="text-3xl font-semibold text-white">
                     {event.name}
 
-                    <span className="ml-2 text-sm font-normal text-gray-400">
+                    <span className="ml-2 text-lg font-normal text-gray-400">
                       Asisten{" "}
                       <span className="text-cyan-400">
                         {event.arrives || 0}
@@ -253,7 +259,7 @@ export default function EventsList({
                     </span>
                   </h2>
 
-                  <span className="mt-1 block text-sm text-gray-400">
+                  <span className="mt-1 block text-xl text-gray-400">
                     {formatDate(event.date)}
                   </span>
 
@@ -289,7 +295,7 @@ export default function EventsList({
                     onClick={() =>
                       handleList(event._id)
                     }
-                    className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-blue-500"
+                    className="rounded-lg bg-blue-600 px-3 py-2 text-3xl font-medium text-white transition hover:bg-blue-500"
                   >
                     ☷ Lista
                   </button>
@@ -299,7 +305,7 @@ export default function EventsList({
                     onClick={() =>
                       handleEdit(event._id)
                     }
-                    className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-blue-500"
+                    className="rounded-lg bg-blue-600 px-3 py-2 text-3xl font-medium text-white transition hover:bg-blue-500"
                   >
                     ◉ Ver
                   </button>
@@ -309,7 +315,7 @@ export default function EventsList({
                     onClick={() =>
                       handleImport(event._id)
                     }
-                    className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-blue-500"
+                    className="rounded-lg bg-blue-600 px-3 py-2 text-3xl font-medium text-white transition hover:bg-blue-500"
                   >
                     ↓ Importar
                   </button>

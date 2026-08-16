@@ -5,7 +5,7 @@ import Guest from "@/models/guest";
 import Attender from "@/models/attender";
 import BIRP from "@/models/birp";
 import User from "@/models/user";
-import { getSession } from "next-auth/react";
+import { auth } from "@/app/utils/auth";
 
 interface RegisterArrivalRequest {
   rut: string;
@@ -34,7 +34,7 @@ function horaNocturna(timestamp: Date | number) {
 
 export async function GET() {
   try {
-    const session = await getSession();
+    const session = await auth();
 
     if (!session?.user?.id) {
       return NextResponse.json(
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
   try {
     await connectMongoDB();
 
-    const session = await getSession();
+    const session = await auth();
 
     if (!session?.user?.id) {
       return NextResponse.json(
@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
     }
 
     const guest = await Guest.findOne({
-      rut,
+      rut: rut.slice(0, -1),
     });
 
     if (!guest) {
@@ -198,7 +198,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    if (attender.checktime) {
+    if (attender.checktime !== null && attender.checktime !== undefined) {
       return NextResponse.json({
         danger: [
           {
@@ -224,12 +224,10 @@ export async function POST(request: NextRequest) {
       (checktime + previousArrives * previousAverage) /
       (previousArrives + 1);
 
-    await Attender.updateOne(
+    const attenderUpdate = await Attender.updateOne(
       {
         _id: attender._id,
-        checktime: {
-          $exists: false,
-        },
+        $or: [{ checktime: null }, { checktime: { $exists: false } }],
       },
       {
         $set: {
@@ -238,15 +236,13 @@ export async function POST(request: NextRequest) {
       }
     );
 
-    const updatedAttender = await Attender.findOne({
-      _id: attender._id,
-    });
-
-    if (!updatedAttender?.checktime) {
+    if (attenderUpdate.matchedCount === 0) {
       return NextResponse.json({
         danger: [
           {
-            item: `${guest.names} no pudo registrar su ingreso`,
+            item: `${guest.names} ya ingresó ${horaNocturna(
+              attender.checktime ?? now
+            )}`,
           },
         ],
       });
@@ -257,9 +253,6 @@ export async function POST(request: NextRequest) {
         _id: guest._id,
       },
       {
-        $set: {
-          gender: guest.gender,
-        },
         $inc: {
           asistencias: 1,
         },
@@ -269,8 +262,6 @@ export async function POST(request: NextRequest) {
     const eventUpdate: {
       $inc: {
         arrives: number;
-        male?: number;
-        female?: number;
       };
       $set: {
         averageCheckTime: number;
@@ -283,12 +274,6 @@ export async function POST(request: NextRequest) {
         averageCheckTime,
       },
     };
-
-    if (guest.gender === "F") {
-      eventUpdate.$inc.female = 1;
-    } else if (guest.gender === "M") {
-      eventUpdate.$inc.male = 1;
-    }
 
     await Event.updateOne(
       {
@@ -309,10 +294,7 @@ export async function POST(request: NextRequest) {
       }
     );
 
-    const bienvenida =
-      guest.gender === "F"
-        ? `Bienvenida ${guest.names}`
-        : `Bienvenido ${guest.names}`;
+    const bienvenida = `Bienvenid@ ${guest.names}`;
 
     return NextResponse.json({
       success: [

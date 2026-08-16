@@ -1,40 +1,54 @@
-export default function CheckRut(rutSinGuion: string) {
-  if (rutSinGuion.toString().trim() != '') {
-    var caracteres = new Array();
-    var serie = new Array(2, 3, 4, 5, 6, 7);
-    var dig = rutSinGuion.toString().substr(rutSinGuion.toString().length - 1, 1);
-    rutSinGuion = rutSinGuion.toString().substr(0, rutSinGuion.toString().length - 1);
+/**
+ * Validación de RUT chileno.
+ *
+ * Recibe el RUT completo SIN guión (ej: "123456785"), tal como lo dejaba
+ * el código original después de `rut.replace("-", "")` + remover puntos.
+ * El último carácter es el dígito verificador (0-9 o k/K).
+ *
+ * Equivalente a la función global `CheckRut` usada en el método Meteor original.
+ */
+export function checkRut(rutSinGuion: string): boolean {
+  const clean = rutSinGuion.replace(/\./g, "").trim();
 
-    for (var i = 0; i < rutSinGuion.length; i++) {
-      caracteres[i] = parseInt(rutSinGuion.charAt((rutSinGuion.length - (i + 1))));
-    }
+  if (!/^[0-9]+[0-9kK]$/.test(clean)) return false;
 
-    var sumatoria = 0;
-    var k = 0;
-    var resto = 0;
+  const cuerpo = clean.slice(0, -1);
+  const dvIngresado = clean.slice(-1).toLowerCase();
 
-    for (var j = 0; j < caracteres.length; j++) {
-      if (k == 6) {
-        k = 0;
-      }
-      sumatoria += parseInt(caracteres[j]) * serie[k];
-      k++;
-    }
+  return calcularDv(cuerpo) === dvIngresado;
+}
 
-    resto = sumatoria % 11;
-    let dv : number | string = 11 - resto;
+export function calcularDv(cuerpo: string): string {
+  let suma = 0;
+  let multiplo = 2;
 
-    if (dv == 10) {
-      dv = -1;
-    } else if (dv == 11) {
-      dv = 0;
-    }
-
-    if (dv.toString().trim().toUpperCase() === dig.toString().trim().toUpperCase())
-      return true;
-    else
-      return false;
-  } else {
-    return false;
+  for (let i = cuerpo.length - 1; i >= 0; i--) {
+    suma += parseInt(cuerpo[i], 10) * multiplo;
+    multiplo = multiplo === 7 ? 2 : multiplo + 1;
   }
+
+  const resto = 11 - (suma % 11);
+  if (resto === 11) return "0";
+  if (resto === 10) return "k";
+  return String(resto);
+}
+
+export function formatRut(rutSinFormato: string): string {
+  const clean = rutSinFormato.replace(/\./g, "").replace(/\s+/g, "").trim();
+
+  if (!clean) return "";
+
+  const cuerpo = clean.replace(/[^0-9kK]/g, "");
+
+  if (!cuerpo) return rutSinFormato;
+
+  const dv = cuerpo.slice(-1).toUpperCase();
+  const numero = cuerpo.slice(0, -1);
+
+  if (!/^[0-9]+$/.test(numero) || !/^[0-9K]$/.test(dv)) {
+    return rutSinFormato;
+  }
+
+  const numeroFormateado = numero.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return `${numeroFormateado}-${dv}`;
 }

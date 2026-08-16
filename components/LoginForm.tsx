@@ -85,7 +85,7 @@ export default function LoginForm() {
           <div className="flex flex-col items-center">
 
             <Image
-              src="/brand.png"
+              src="/logo.png"
               alt="Actionium-Brand"
               width={160}
               height={160}
@@ -97,7 +97,7 @@ export default function LoginForm() {
               <h1 className="text-4xl font-semibold tracking-tight text-gray-200">
                 PartySuite
                 <span className="ml-2 align-middle text-xs font-normal text-gray-400">
-                  v0.1
+                  v0.7
                 </span>
               </h1>
 
@@ -152,13 +152,6 @@ export default function LoginForm() {
                 >
                   CONTRASEÑA
                 </label>
-
-                <a
-                  href="#"
-                  className="text-xs font-medium text-indigo-300 transition hover:text-cyan-300"
-                >
-                  ¿Olvidaste tu contraseña?
-                </a>
               </div>
 
               <div className="mt-2">
