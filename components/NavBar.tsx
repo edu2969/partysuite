@@ -133,7 +133,7 @@ export default function TopNavigator() {
 
                         {/* BI */}
 
-                        {isAdmin && (
+                        {isNeo && (
 
                             <MenuItem
                                 href="/business-intelligence"
@@ -152,6 +152,17 @@ export default function TopNavigator() {
                                 href="/maintenance"
                                 icon={<FaScrewdriverWrench size={26} />}
                                 text="Mantención"
+                                close={() => setMenuActivo(false)}
+                            />
+
+                        )}
+
+                        {isNeo && (
+
+                            <MenuItem
+                                href="/about"
+                                icon={<FaChartColumn size={26} />}
+                                text="Acerca de..."
                                 close={() => setMenuActivo(false)}
                             />
 

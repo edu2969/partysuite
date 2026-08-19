@@ -31,7 +31,7 @@ export default function AttenderList({
   const [invitados, setInvitados] = useState<AttenderItem[]>([]);
 
   const load = async (filter = "") => {
-    if(!eventId) return;
+    if (!eventId) return;
     setSearching(true);
 
     const res = await fetch(
@@ -62,97 +62,98 @@ export default function AttenderList({
   const rows = useMemo(() => invitados, [invitados]);
 
   return (
-    <main className="mx-auto max-w-5xl p-6">
+    <main className="w-full h-screen overflow-y-scroll">
+      <div className="mx-auto max-w-5xl p-6">
 
-      <div className="mb-8">
+        <div className="mb-8">
 
-        <h1 className="text-3xl font-bold text-white">
-          {evento?.name}
-        </h1>
+          <h1 className="text-3xl font-bold text-white">
+            {evento?.name}
+          </h1>
 
-        <p className="mt-1 text-gray-400">
-          Asisten {evento?.arrives ?? 0} de {evento?.total ?? 0}
-        </p>
+          <p className="mt-1 text-gray-400">
+            Asisten {evento?.arrives ?? 0} de {evento?.total ?? 0}
+          </p>
 
-      </div>
-
-      <div className="mb-6">
-
-        <label className="mb-2 block text-sm text-gray-300">
-          Búsqueda por invitado o RP
-        </label>
-
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Texto..."
-          className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none focus:border-cyan-500"
-        />
-
-        <div className="mt-2 h-5 text-sm text-gray-400">
-          {searching && "Buscando..."}
         </div>
 
-      </div>
+        <div className="mb-6">
 
-      {loading ? (
-        <div className="py-12 text-center text-gray-400">
-          Cargando...
+          <label className="mb-2 block text-sm text-gray-300">
+            Búsqueda por invitado o RP
+          </label>
+
+          <input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Texto..."
+            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none focus:border-cyan-500"
+          />
+
+          <div className="mt-2 h-5 text-sm text-gray-400">
+            {searching && "Buscando..."}
+          </div>
+
         </div>
-      ) : rows.length === 0 ? (
-        <div className="rounded-xl border border-slate-800 bg-slate-900 p-6 text-center text-gray-400">
-          No existen asistentes para este evento
-        </div>
-      ) : (
-        <div className="space-y-3">
 
-          {rows.map((g) => (
-            <div
-              key={g.guestId}
-              className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900 p-5"
-            >
-              <div>
+        {loading ? (
+          <div className="py-12 text-center text-gray-400">
+            Cargando...
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="rounded-xl border border-slate-800 bg-slate-900 p-6 text-center text-gray-400">
+            No existen asistentes para este evento
+          </div>
+        ) : (
+          <div className="space-y-3">
 
-                <h3 className="text-lg font-semibold text-white">
-                  {g.names}
-                  <span className="ml-2 text-sm font-normal text-cyan-400">
-                    ({g.rp})
-                  </span>
-                </h3>
+            {rows.map((g) => (
+              <div
+                key={g.guestId}
+                className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900 p-5"
+              >
+                <div>
 
-                {g.baneado && (
-                  <div className="mt-1 text-sm text-red-500">
-                    (Baneado)
-                  </div>
-                )}
+                  <h3 className="text-lg font-semibold text-white">
+                    {g.names}
+                    <span className="ml-2 text-sm font-normal text-cyan-400">
+                      ({g.rp})
+                    </span>
+                  </h3>
 
-                <div className="mt-2 text-sm text-gray-400">
-                  {g.checktime
-                    ? `Llegada: ${new Date(g.checktime).toLocaleTimeString(
+                  {g.baneado && (
+                    <div className="mt-1 text-sm text-red-500">
+                      (Baneado)
+                    </div>
+                  )}
+
+                  <div className="mt-2 text-sm text-gray-400">
+                    {g.checktime
+                      ? `Llegada: ${new Date(g.checktime).toLocaleTimeString(
                         "es-CL",
                         {
                           hour: "2-digit",
                           minute: "2-digit",
                         }
                       )}`
-                    : "No ha llegado"}
+                      : "No ha llegado"}
+                  </div>
+
                 </div>
 
+                <Link
+                  href={`/guests/${g.guestId}`}
+                  className="rounded-lg bg-cyan-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-cyan-500"
+                >
+                  Ver
+                </Link>
+
               </div>
+            ))}
 
-              <Link
-                href={`/guests/${g.guestId}`}
-                className="rounded-lg bg-cyan-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-cyan-500"
-              >
-                Ver
-              </Link>
-
-            </div>
-          ))}
-
-        </div>
-      )}
-
+          </div>
+        )}
+      </div>
     </main>
   );
 }

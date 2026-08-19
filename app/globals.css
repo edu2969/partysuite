@@ -346,3 +346,30 @@ body {
 .animate-fader-out-75 {  
   animation: fader-out-75 4s linear;
 }
+
+@theme {
+  --animate-entrance: entrance 2s forwards;
+  --animate-spin-custom: spin 1s linear infinite;
+
+  @keyframes entrance {
+    0% {
+      opacity: 0;
+      transform: scale(0.1);
+    }
+
+    100% {
+      opacity: 1;
+      transform: scale(1.5);
+    }
+  }
+
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+
+    to {
+      transform: rotate(360deg);
+    }
+  }
+}

@@ -6,7 +6,9 @@ import { auth } from "@/app/utils/auth";
 
 export async function GET(req: NextRequest) {
     const session = await auth();
-    if(!session || session.user?.role !== "ADMINISTRADOR") {
+    if(!session || (session.user?.role !== "ADMINISTRADOR" 
+        && session.user?.role !== "NEO")
+    ) {
         return NextResponse.json({ ok: false, error: "No session" });
     }
     const role = req.nextUrl.searchParams.get("role");
