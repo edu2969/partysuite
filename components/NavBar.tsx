@@ -14,6 +14,7 @@ import {
     FaChartColumn,
     FaScrewdriverWrench,
     FaRightFromBracket,
+    FaStar,
 } from "react-icons/fa6";
 
 export default function TopNavigator() {
@@ -81,7 +82,7 @@ export default function TopNavigator() {
 
                     <div className="mt-24 space-y-2 text-cyan-300">
 
-                        <div className="mb-6 flex flex-col items-center justify-center gap-3">
+                        <div className="relative mb-6 flex flex-col items-center justify-center gap-3">
                             <div
                                 className="
                                     flex h-20 w-20 items-center justify-center
@@ -104,9 +105,12 @@ export default function TopNavigator() {
                                 })()}
                             </div>
 
-                            <span className="text-xl font-medium text-cyan-200 text-center">
+                            <span className="flex text-xl font-medium text-cyan-200 text-center">
                                 {session?.user?.name || "Usuario"}
-                            </span>
+                                {isAdmin && (<div className="ml-1">
+                                    <FaStar className="text-sm text-yellow-400" />
+                                </div>)}  
+                            </span>                            
                         </div>
 
                         {/* Eventos */}

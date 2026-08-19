@@ -21,7 +21,7 @@ interface Account {
     role: "ADMINISTRADOR" | "PORTERIA" | "NEO" | "ELIMINADO";
 }
 
-export default function Managment() {
+export default function AccountsList() {
 
     const router = useRouter();
     const { data: session } = useSession();
@@ -164,14 +164,16 @@ export default function Managment() {
                         <div className="flex justify-between">
 
                             <div>
-                                <div className="text-sm text-gray-400">
-                                    {index + 1}. <span className="text-xl font-semibold text-white">{account.name}</span>
+                                <div className="flex text-2xl text-gray-400 space-x-2">
+                                    <span className="mt-1">{index + 1}. </span>
+                                    <span className="text-3xl font-semibold text-white">{account.name}</span>
+                                    {account.role === "ADMINISTRADOR" && (
+                                        <FaStar className="text-yellow-400" />
+                                    )}                                    
                                 </div>
 
                                 <h2 className="text-xl font-semibold text-white mt-1 flex items-center gap-2">
-                                    {account.role === "ADMINISTRADOR" && (
-                                        <FaStar className="text-yellow-400" />
-                                    )}
+                                    
                                 </h2>
                                 <div className="text-cyan-200">
                                     {account.email}

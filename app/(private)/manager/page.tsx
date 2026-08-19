@@ -1,5 +1,5 @@
-import Managment from "@/components/Managment";
+import AccountsList from "@/components/accounts/AccountsList";
 
 export default function ManagerPage() {
-    return <Managment />
+    return <AccountsList />
 }

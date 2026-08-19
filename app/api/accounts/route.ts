@@ -13,10 +13,10 @@ export async function GET(req: NextRequest) {
     }
     const role = req.nextUrl.searchParams.get("role");
 
-    console.log("GET /api/accounts?role=", role);
+    console.log("GET /api/accounts?role=", role);   
 
     await connectMongoDB();
-    const users = await User.find({ role });
+    const users = await User.find({ role: role === "ELIMINADOS" ? 'ELIMINADOS' : { $in: ["ADMINISTRADOR", "EMBAJADOR"] } });
 
     return NextResponse.json({ accounts: users });
 }
