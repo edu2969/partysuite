@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { formatClock, formatHoraNocturna } from '@/lib/time'
 import type { EventInfo, Guest, ImportMessages } from '@/lib/types'
 import { GoAlertFill } from "react-icons/go";
-import { formatRut } from "@/app/utils/rut"
+import { PiWarningOctagonFill } from "react-icons/pi";
 import { launchConfetti } from '@/app/utils/confeti'
 import { FaCheckCircle } from 'react-icons/fa';
 
@@ -16,6 +16,8 @@ export default function Welcome() {
   const [bloqueado, setBloqueado] = useState(false)
   const [dudosa, setDudosa] = useState(false) // reemplaza leer "dudosa"/"feliz" del src de la imagen
   const [rutValue, setRutValue] = useState('')
+  const [messageKey, setMessageKey] = useState(0);
+  const clearMessageTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Equivalente a la variable de módulo `cadena` del original. Un ref evita
   // relecturas de estado obsoletas dentro del handler de keydown.
@@ -74,6 +76,14 @@ export default function Welcome() {
     return () => window.removeEventListener('keydown', handleWindowKeydown)
   }, [])
 
+  useEffect(() => {
+    return () => {
+      if (clearMessageTimer.current) {
+        clearTimeout(clearMessageTimer.current);
+      }
+    };
+  }, []);
+
   // --- Equivalente a la función evaluar(cadena) ---
   function evaluarCadena(cadena: string): string | false {
     const mascara = '0123456789'
@@ -92,32 +102,75 @@ export default function Welcome() {
 
   const registrarIngreso = useCallback(
     async (rut: string) => {
-      setBloqueado(true)
+      setBloqueado(true);
+
+      // Cancela el timer anterior si todavía existe
+      if (clearMessageTimer.current) {
+        clearTimeout(clearMessageTimer.current);
+      }
+
       try {
         const res = await fetch('/api/events/check-in', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ rut, dudosa }),
-        })
-        const data = await res.json()
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            rut,
+            dudosa,
+          }),
+        });
+
+        const data = await res.json();
+
         console.log("DATA", data);
-        setRutValue('')
-        setGuestToRegister(false)
-        setMessages(data)
+
+        setRutValue('');
+        setGuestToRegister(false);
+
+        // Fuerza un nuevo montaje del mensaje
+        setMessageKey((prev) => prev + 1);
+
+        setMessages(data);
 
         if (data?.success?.length) {
-          launchConfetti({ count: 180, duration: 2600, spread: 240 })
+          launchConfetti({
+            count: 180,
+            duration: 2600,
+            spread: 240,
+          });
         }
+
+        // 4 segundos: coincide exactamente con la animación
+        clearMessageTimer.current = setTimeout(() => {
+          setMessages({});
+        }, 4000);
+
       } catch (err) {
-        console.error('Error al registrar ingreso', err)
-        setMessages({ danger: [{ item: 'No se pudo contactar al servidor' }]})
+        console.error('Error al registrar ingreso', err);
+
+        setMessageKey((prev) => prev + 1);
+
+        setMessages({
+          danger: [
+            {
+              item: 'No se pudo contactar al servidor',
+            },
+          ],
+        });
+
+        clearMessageTimer.current = setTimeout(() => {
+          setMessages({});
+        }, 4000);
+
       } finally {
-        setBloqueado(false)
-        rutInputRef.current?.focus()
+        setBloqueado(false);
+        rutInputRef.current?.focus();
+        setDudosa(false);
       }
     },
     [dudosa]
-  )
+  );
 
   // --- Equivalente a 'keydown #guest-rut' (captura del lector de código) ---
   function handleRutKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -218,13 +271,17 @@ export default function Welcome() {
             </div>
           </div>
 
-          {messages && (            
-            <div className="text-2xl">
+
+          {Object.keys(messages).length > 0 && (
+            <div
+              key={messageKey}
+              className="fixed bottom-0 text-2xl pb-10 animate-fader-out-75"
+            >
               <div className="list-errors" style={{ paddingTop: 20 }}>
                 {messages.danger && (
                   <div className="alert alert-danger" role="alert">
                     <div className="flex gap-4 text-red-300 text-lg">
-                    <GoAlertFill /><span className="-mt-1">¡Atención!</span>
+                      <PiWarningOctagonFill /><span className="-mt-1">¡Atención!</span>
                     </div>
                     {messages.danger?.map((danger, i) => (
                       <div key={`danger_${i}`} className="flex text-red-200 text-2xl">
@@ -235,6 +292,9 @@ export default function Welcome() {
                 )}
                 {messages.warning && (
                   <div className="alert alert-warning" role="alert">
+                    <div className="flex gap-4 text-red-300 text-lg">
+                      <GoAlertFill /><span className="-mt-1">¡Atención!</span>
+                    </div>
                     {messages.warning?.map((warning, i) => (
                       <div key={`warning_${i}`}>
                         <span className="glyphicon glyphicon-warning-sign" /> {warning.item}
@@ -246,7 +306,7 @@ export default function Welcome() {
                 {messages.success && (
                   <div className="alert alert-success" role="alert">
                     <div className="flex gap-4 text-green-300 text-lg">
-                    <FaCheckCircle /><span className="-mt-1">¡Presente en la lista!</span>
+                      <FaCheckCircle /><span className="-mt-1">¡Presente en la lista!</span>
                     </div>
                     {messages.success?.map((success, i) => (
                       <div key={`alert_${i}`}>
@@ -257,8 +317,8 @@ export default function Welcome() {
                   </div>
                 )}
               </div>
-            </div>
-          )}
+            </div>)}
+
         </div>
       </div>
     </div>

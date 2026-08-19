@@ -9,10 +9,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
     FaBars,
     FaXmark,
-    FaHouse,
     FaCalendarDays,
-    FaPlus,
-    FaUsers,
     FaGear,
     FaChartColumn,
     FaScrewdriverWrench,
@@ -29,7 +26,7 @@ export default function TopNavigator() {
     const pathname = usePathname();
 
     const isAdmin = session?.user?.role === "ADMINISTRADOR";
-    const isRPAdmin = isAdmin || session?.user?.role === "ADMINISTRADOR";
+    const isNeo = session?.user.role === "NEO";
 
     return (
         <>
@@ -84,6 +81,34 @@ export default function TopNavigator() {
 
                     <div className="mt-24 space-y-2 text-cyan-300">
 
+                        <div className="mb-6 flex flex-col items-center justify-center gap-3">
+                            <div
+                                className="
+                                    flex h-20 w-20 items-center justify-center
+                                    rounded-full border border-cyan-300 bg-cyan-500/10
+                                    text-3xl font-bold leading-none tracking-[0.08em]
+                                    text-cyan-200 shadow-[0_0_18px_rgba(34,211,238,0.35)]
+                                "
+                                aria-label="Iniciales del usuario"
+                            >
+                                {(() => {
+                                    const userName = session?.user?.name || "Usuario";
+                                    const initials = userName
+                                        .split(/\s+/)
+                                        .filter(Boolean)
+                                        .map((part) => part[0]?.toUpperCase() ?? "")
+                                        .join("")
+                                        .slice(0, 2);
+
+                                    return initials || "U";
+                                })()}
+                            </div>
+
+                            <span className="text-xl font-medium text-cyan-200 text-center">
+                                {session?.user?.name || "Usuario"}
+                            </span>
+                        </div>
+
                         {/* Eventos */}
 
                         <MenuItem
@@ -95,25 +120,12 @@ export default function TopNavigator() {
 
                         {/* Administración */}
 
-                        {isRPAdmin && (
+                        {isAdmin && (
 
                             <MenuItem
                                 href="/manager"
                                 icon={<FaGear size={26} />}
-                                text="Administración"
-                                close={() => setMenuActivo(false)}
-                            />
-
-                        )}
-
-                        {/* Invitados */}
-
-                        {isRPAdmin && (
-
-                            <MenuItem
-                                href="/guests"
-                                icon={<FaUsers size={26} />}
-                                text="Invitados"
+                                text="Cuentas"
                                 close={() => setMenuActivo(false)}
                             />
 
@@ -121,7 +133,7 @@ export default function TopNavigator() {
 
                         {/* BI */}
 
-                        {isRPAdmin && (
+                        {isAdmin && (
 
                             <MenuItem
                                 href="/business-intelligence"
@@ -134,7 +146,7 @@ export default function TopNavigator() {
 
                         {/* Mantención */}
 
-                        {isAdmin && (
+                        {isNeo && (
 
                             <MenuItem
                                 href="/maintenance"

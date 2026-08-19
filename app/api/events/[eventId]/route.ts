@@ -50,7 +50,7 @@ export async function PUT(
   }
 
   const userRole = session.user.role;
-  if (userRole !== "ADMINISTRADOR" && userRole !== "NEO") {
+  if (userRole !== "ADMINISTRADOR" && userRole !== "NEO" && userRole !== "EMBAJADOR") {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
  

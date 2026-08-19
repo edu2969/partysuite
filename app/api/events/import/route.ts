@@ -7,6 +7,7 @@ import BIRP from "@/models/birp";
 import User from "@/models/user";
 import { checkRut } from "@/app/utils/rut";
 import { auth } from "@/app/utils/auth";
+import moment from "moment";
 
 interface ImportRequest {
   entradas: string[];
@@ -76,17 +77,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const ms = eventSelected.closeTime ?? 0;
-    const horas = Math.floor(ms / 3600000);
-    const minutos = Math.floor((ms - horas * 3600000) / 60000);
-
-    const fechaCierre = new Date(eventSelected.date);
-
-    fechaCierre.setHours(12, 0, 0, 0);
-    fechaCierre.setHours(fechaCierre.getHours() + horas);
-    fechaCierre.setMinutes(fechaCierre.getMinutes() + minutos);
-
-    if (new Date() > fechaCierre) {
+    const momentoCierre = moment().add(1, "day").startOf("day").add(eventSelected.closeTime, "millisecond");
+    if (momentoCierre.isBefore(new Date())) {
       return NextResponse.json({
         danger: [
           {

@@ -1,71 +1,44 @@
-import { auth } from "@/app/utils/auth";
-import { connectMongoDB } from "@/lib/mongodb";
-import { NextRequest, NextResponse } from "next/server";
-import Event from "@/models/event"
+import { NextResponse } from 'next/server'
+import moment from 'moment'
+import { connectMongoDB } from '@/lib/mongodb'
+import Event from '@/models/event'
 
-export async function GET(req: NextRequest) {
+// La respuesta depende de la hora actual del request, así que no debe
+// cachearse ni pre-renderizarse estáticamente.
+export const dynamic = 'force-dynamic'
 
-    const session = await auth();
+// Antes de esta hora se considera que todavía es "el evento de ayer" (la
+// fiesta que arrancó anoche y sigue funcionando pasada la medianoche).
+const HORA_CORTE_MADRUGADA = 5
 
-    if (
-        !session?.user ||
-        session.user.role !== "PORTERIA"
-    ) {
-        return NextResponse.json(
-            {
-                ok: false,
-                error: "No autorizado",
-            },
-            { status: 401 }
-        );
-    }
+export async function GET() {
+  await connectMongoDB()
 
-    await connectMongoDB();
+  // OJO: moment() usa la hora LOCAL DEL SERVIDOR. Si el server no corre en
+  // horario de Chile (típico en hosting con TZ=UTC), el corte de las 5am
+  // va a quedar desfasado. Si es el caso, instalen moment-timezone y usen
+  // moment().tz('America/Santiago') en vez de moment() a secas.
+  const ahora = moment()
 
-    const now = new Date();
+  const diaDelEvento =
+    ahora.hour() < HORA_CORTE_MADRUGADA
+      ? ahora.clone().subtract(1, 'day')
+      : ahora.clone()
 
-    // 00:00:00.000 de hoy
-    const startOfDay = new Date(now);
-    startOfDay.setHours(0, 0, 0, 0);
+  // 00:00:00 del día que corresponde (hoy o ayer, según la hora actual)
+  const inicioDelDia = diaDelEvento.startOf('day').toDate()
 
-    // 00:00:00.000 de mañana
-    const endOfDay = new Date(startOfDay);
-    endOfDay.setDate(endOfDay.getDate() + 1);
+  // Eventos desde ese día en adelante ($gte, sin tope superior); se ordena
+  // ascendente y se toma el primero, o sea el más cercano a ese punto de
+  // partida. Si no hay evento para hoy/ayer, esto devolverá el próximo
+  // evento futuro que exista en la base — si prefieren null en ese caso en
+  // vez del próximo evento, hay que agregar también un $lt con el fin de
+  // ese mismo día.
+  const eventSelected = await Event.findOne({
+    date: { $gte: inicioDelDia },
+  })
+    .sort({ date: 1 })
+    .lean()
 
-    const events = await Event.find({
-        date: {
-            $gte: startOfDay,
-            $lt: endOfDay,
-        },
-    })
-        .sort({ date: -1 })
-        .lean();
-
-    const event = events.find((event) => {
-
-        // Si no tiene cierre, lo consideramos vigente
-        if (event.closeTime == null) {
-            return true;
-        }
-
-        // closeTime = milisegundos desde las 00:00
-        const closeDate = new Date(
-            endOfDay.getTime() + event.closeTime
-        );
-
-        return now.getTime() <= closeDate.getTime();
-    });
-
-    if (!event) {
-        return NextResponse.json({
-            ok: true,
-            event: null,
-            message: "No existe un evento vigente para hoy",
-        });
-    }
-
-    return NextResponse.json({
-        ok: true,
-        event,
-    });
+  return NextResponse.json({ event: eventSelected ?? null })
 }

@@ -44,10 +44,8 @@ export default function EventsList({
   const [generatingBI, setGeneratingBI] =
     useState<string | null>(null);
 
-  const isAdmin = user.role === "ADMIN";
-  const isRPAdmin =
-    user.isRPAdmin === true ||
-    user.role === "ADMIN";
+  const isRPAdmin = user.role === "ADMINISTRADOR";
+  const isNeo = user.role === "NEO";
 
   useEffect(() => {
     loadEvents();
@@ -72,7 +70,6 @@ export default function EventsList({
       }
 
       const data = await response.json();
-      console.log("DATA", data);
       setEvents(data || []);
     } catch (error) {
       console.error(error);
@@ -101,7 +98,7 @@ export default function EventsList({
 
   const handleList = (eventId: string) => {
     router.push(
-      `/attendersList/${eventId}/0`
+      `/attenders/${eventId}`
     );
   };
 
@@ -214,11 +211,11 @@ export default function EventsList({
           </span>
           Listado de Eventos!
         </h1>
-        <div className="flex justify-end w-full text-right text-2xl">
+        {isRPAdmin && (<div className="flex justify-end w-full text-right text-2xl">
           <div className="rounded-md bg-cyan-600 text-white hover:bg-cyan-500">
             <Link className="flex gap-2 px-5 py-2 items-center" href="/events/new"><FaPlus /> Nuevo evento</Link>
           </div>
-        </div>
+        </div>)}
       </div>
 
       {error && (
@@ -267,7 +264,7 @@ export default function EventsList({
 
                 <div className="flex flex-wrap justify-end gap-2">
 
-                  {isAdmin && (
+                  {isNeo && (
                     <button
                       type="button"
                       onClick={() =>
@@ -277,7 +274,7 @@ export default function EventsList({
                         generatingBI ===
                         event._id
                       }
-                      className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-blue-500 disabled:opacity-50"
+                      className="rounded-lg bg-blue-600 px-3 py-2 text-3xl font-medium text-white transition hover:bg-blue-500 disabled:opacity-50"
                     >
                       {generatingBI ===
                       event._id ? (
@@ -290,7 +287,7 @@ export default function EventsList({
                     </button>
                   )}
 
-                  <button
+                  {(isRPAdmin || isNeo) && <button
                     type="button"
                     onClick={() =>
                       handleList(event._id)
@@ -298,9 +295,9 @@ export default function EventsList({
                     className="rounded-lg bg-blue-600 px-3 py-2 text-3xl font-medium text-white transition hover:bg-blue-500"
                   >
                     ☷ Lista
-                  </button>
+                  </button>}
 
-                  <button
+                  {(isRPAdmin || isNeo) && <button
                     type="button"
                     onClick={() =>
                       handleEdit(event._id)
@@ -308,7 +305,7 @@ export default function EventsList({
                     className="rounded-lg bg-blue-600 px-3 py-2 text-3xl font-medium text-white transition hover:bg-blue-500"
                   >
                     ◉ Ver
-                  </button>
+                  </button>}
 
                   <button
                     type="button"
@@ -333,7 +330,7 @@ export default function EventsList({
                         deleting ===
                         event._id
                       }
-                      className="rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-red-500 disabled:opacity-50"
+                      className="rounded-lg bg-red-600 px-3 py-2 text-3xl font-medium text-white transition hover:bg-red-500 disabled:opacity-50"
                     >
                       {deleting ===
                       event._id

@@ -31,6 +31,7 @@ export default function AttenderList({
   const [invitados, setInvitados] = useState<AttenderItem[]>([]);
 
   const load = async (filter = "") => {
+    if(!eventId) return;
     setSearching(true);
 
     const res = await fetch(

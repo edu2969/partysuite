@@ -1,69 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectMongoDB } from "@/lib/mongodb";
+import { getEventDayRange, listaCerrada } from "@/lib/eventDay";
+import { horaNocturna } from "@/lib/time";
 import Event from "@/models/event";
 import Guest from "@/models/guest";
 import Attender from "@/models/attender";
-import BIRP from "@/models/birp";
 import User from "@/models/user";
+import BIRP from "@/models/birp";
 import { auth } from "@/app/utils/auth";
 
 interface RegisterArrivalRequest {
   rut: string;
-  baneado?: boolean;
-}
-
-interface Message {
-  item: string;
-}
-
-interface Messages {
-  success?: Message[];
-  warning?: Message[];
-  danger?: Message[];
-}
-
-function horaNocturna(timestamp: Date | number) {
-  const date = new Date(timestamp);
-
-  return date.toLocaleTimeString("es-CL", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-}
-
-export async function GET() {
-  try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        {
-          message: "No autenticado",
-        },
-        { status: 401 }
-      );
-    }
-
-    await connectMongoDB();
-
-    const events = await Event.find({})
-      .sort({ date: -1 })
-      .lean();
-
-    return NextResponse.json({
-      events,
-    });
-  } catch (error) {
-    console.error("GET /api/events:", error);
-
-    return NextResponse.json(
-      {
-        message: "Error al obtener los eventos",
-      },
-      { status: 500 }
-    );
-  }
+  dudosa?: boolean;
 }
 
 export async function POST(request: NextRequest) {
@@ -101,7 +49,7 @@ export async function POST(request: NextRequest) {
     const body: RegisterArrivalRequest = await request.json();
 
     const rut = body.rut?.trim();
-    const baneado = body.baneado === true;
+    const baneado = body.dudosa === true;
 
     if (!rut) {
       return NextResponse.json(
@@ -116,13 +64,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const now = new Date();
-
-    const desde = new Date(now);
-    desde.setHours(0, 0, 0, 0);
-
-    const hasta = new Date(desde);
-    hasta.setDate(hasta.getDate() + 1);
+    // Mismo criterio que GET /api/events/current: antes de las 5am, el
+    // evento "de hoy" en términos de negocio sigue siendo el de ayer (la
+    // fiesta sigue funcionando pasada la medianoche). Antes esto solo
+    // buscaba dentro del día calendario actual, así que fallaba en la
+    // madrugada — ahora usa el mismo helper que /current.
+    const { desde, hasta } = getEventDayRange();
 
     const evnt = await Event.findOne({
       date: {
@@ -142,6 +89,21 @@ export async function POST(request: NextRequest) {
         },
         { status: 404 }
       );
+    }
+
+    // Si la hora de cierre (evento.closeTime, offset desde las 12:00 de
+    // evento.date) ya pasó, se corta acá antes de tocar invitados/asistencia.
+    // Ej: son las 1:14 y closeTime da 1:30 → todavía NO ha cerrado, sigue
+    // de largo. Mismo cálculo que ya usaba processListImport, ahora
+    // centralizado en lib/eventDay.ts para que ambos lados usen la misma regla.
+    if (listaCerrada(evnt)) {
+      return NextResponse.json({
+        danger: [
+          {
+            item: "La lista ha cerrado. Lo sentimos",
+          },
+        ],
+      });
     }
 
     const guest = await Guest.findOne({
@@ -192,7 +154,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         warning: [
           {
-            item: `${rut} bloqueado`,
+            item: `${rut} No presente en la lista`,
           },
         ],
       });
@@ -210,12 +172,11 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const rp = await User.findById(attender.rpId).lean<typeof User>();
+    const rp = await User.findById(attender.rpId).lean<{ name: string }>();
 
     const nombreRP = rp?.name || "Sin RP";
 
-    const checktime =
-      now.getTime() - desde.getTime();
+    const checktime = Date.now() - desde.getTime();
 
     const previousArrives = evnt.arrives || 0;
     const previousAverage = evnt.averageCheckTime || 0;
@@ -241,7 +202,7 @@ export async function POST(request: NextRequest) {
         danger: [
           {
             item: `${guest.names} ya ingresó ${horaNocturna(
-              attender.checktime ?? now
+              attender.checktime ?? checktime
             )}`,
           },
         ],
