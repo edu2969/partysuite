@@ -2,6 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { TbUserEdit } from "react-icons/tb";
+import Loader from "../prefabs/Loader";
 
 interface Event {
   _id: string;
@@ -29,6 +32,7 @@ export default function AttenderList({
   const [searching, setSearching] = useState(false);
   const [text, setText] = useState("");
   const [invitados, setInvitados] = useState<AttenderItem[]>([]);
+  const router = useRouter();
 
   const load = async (filter = "") => {
     if (!eventId) return;
@@ -61,21 +65,39 @@ export default function AttenderList({
 
   const rows = useMemo(() => invitados, [invitados]);
 
+  const handleBack = () => {
+    router.back();
+  }
+
   return (
     <main className="w-full h-screen overflow-y-scroll">
-      <div className="mx-auto max-w-5xl p-6">
+      <div className="mx-auto max-w-5xl p-6 text-xl">
 
-        <div className="mb-8">
+        <div className="flex flex-col items-end gap-4 md:flex-row md:items-start md:justify-between md:gap-0">
+          <div className="mb-8">
 
-          <h1 className="text-3xl font-bold text-white">
-            {evento?.name}
-          </h1>
+            <h1 className="text-3xl font-bold text-white text-nowrap">
+              {evento?.name}
+            </h1>
 
-          <p className="mt-1 text-gray-400">
-            Asisten {evento?.arrives ?? 0} de {evento?.total ?? 0}
-          </p>
+            <p className="mt-1 text-gray-400 text-nowrap">
+              Asisten {evento?.arrives ?? 0} de {evento?.total ?? 0}
+            </p>
 
+          </div>
+          <div className="self-end md:self-auto md:w-auto">
+            <button
+              className="rounded-lg bg-neutral-600 px-6 py-3 font-semibold text-white transition hover:bg-neutral-500 disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={handleBack}
+            >
+              &lt;&lt; VOLVER
+            </button>
+          </div>
         </div>
+
+
+
+
 
         <div className="mb-6">
 
@@ -97,9 +119,7 @@ export default function AttenderList({
         </div>
 
         {loading ? (
-          <div className="py-12 text-center text-gray-400">
-            Cargando...
-          </div>
+          <Loader text="Cargando..." />
         ) : rows.length === 0 ? (
           <div className="rounded-xl border border-slate-800 bg-slate-900 p-6 text-center text-gray-400">
             No existen asistentes para este evento
@@ -143,9 +163,10 @@ export default function AttenderList({
 
                 <Link
                   href={`/guests/${g.guestId}`}
-                  className="rounded-lg bg-cyan-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-cyan-500"
+                  className="rounded-lg bg-cyan-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-cyan-500 text-center"
                 >
-                  Ver
+                  <TbUserEdit size={28} className="mx-auto" />
+                  Editar
                 </Link>
 
               </div>

@@ -143,6 +143,10 @@ export default function AttendersImport({
     }
   };
 
+  const handleBack = () => {
+    router.back();
+  }
+
   if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center">
@@ -177,19 +181,19 @@ export default function AttendersImport({
     <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
 
       <div className="mb-6">
-        <h3 className="flex items-center gap-2 text-3xl font-semibold text-white">
+        <h3 className="flex justify-end md:justify-start gap-2 text-3xl font-semibold text-white">
           <span>↓</span>
           {event.name}
         </h3>
 
-        <h4 className="mt-2 text-lg text-gray-300">
+        <h4 className="text-right mt-2 text-xl text-gray-300">
           Importación de Invitados
         </h4>
 
-        <div className="flex flex-col mt-3 gap-2 rounded-md bg-yellow-500/10 px-3 py-2 text-xl text-yellow-300">
-          <p className="text-sm">Pega acá una lista de invitados</p>
+        <div className="flex flex-col mt-3 gap-2 rounded-md bg-yellow-500/10 px-3 py-2 text-2xl text-yellow-300">
+          <p className="text-xl">Pega acá una lista de invitados</p>
           <div className="flex">
-          <p className="mr-4">⚠</p>          
+          <p className="mr-4 text-2xl">⚠</p>          
           Formato: [Nombre(s) Apellido(s) Rut]
           </div>
         </div>
@@ -205,7 +209,7 @@ Juan Perez 12.345.678-5
 Maria Gonzalez 15234567-8`}
           rows={8}
           disabled={importing}
-          className="block w-full resize-none rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 font-mono text-sm text-gray-100 shadow-sm outline-none transition placeholder:text-gray-600 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 disabled:opacity-50"
+          className="block w-full resize-none rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 font-mono text-md text-gray-100 shadow-sm outline-none transition placeholder:text-gray-600 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 disabled:opacity-50"
         />
       </div>
 
@@ -290,12 +294,18 @@ Maria Gonzalez 15234567-8`}
         </div>
       )}
 
-      <div className="mt-6">
+      <div className="flex mt-6 space-x-4 text-2xl justify-end">
+        <button
+                onClick={handleBack}
+                className="rounded-lg bg-neutral-600 px-6 py-3 font-semibold text-white transition hover:bg-neutral-500 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                ← Volver
+              </button>
         <button
           type="button"
           onClick={handleImport}
           disabled={importing}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-3 text-2xl font-semibold text-white shadow-sm transition hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/50 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex w-60 items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-3 font-semibold text-white shadow-sm transition hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/50 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {importing ? (
             <>

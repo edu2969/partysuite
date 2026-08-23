@@ -3,19 +3,20 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { GrGroup } from "react-icons/gr";
 
 import {
     FaPlus,
-    FaUser,
     FaUserPen,
     FaTrash,
     FaRotateLeft,
     FaStar,
 } from "react-icons/fa6";
+import DeleteAccountModal from "../modals/DeleteAccountModal";
+import Loader from "../prefabs/Loader";
 
 interface Account {
     _id: string;
-    username: string;
     email: string;
     name: string;
     role: "ADMINISTRADOR" | "PORTERIA" | "NEO" | "ELIMINADO";
@@ -26,192 +27,157 @@ export default function AccountsList() {
     const router = useRouter();
     const { data: session } = useSession();
 
-    const role = Number(session?.user?.role ?? 0);
+    const role = session?.user?.role;
 
-    const isAdmin = role === 1;
-    const isRPAdmin = isAdmin || session?.user?.role === "ADMINISTRADOR";
+    const isAdmin = role === "ADMINISTRADOR";
 
-    const [roleSelected, setRoleSelected] = useState("EMBAJADOR");
+    const [deletedAccounts, setDeletedAccounts] = useState(false);
     const [accounts, setAccounts] = useState<Account[]>([]);
     const [loading, setLoading] = useState(true);
+    const [showDeleteAccountModal, setShowDeleteAccountModal] = useState<{
+        id: string | null,
+        name?: string,
+    }>({
+        id: null
+    });
 
-    useEffect(() => {
-        loadAccounts();
-    }, [roleSelected]);
-
-    async function loadAccounts() {
-
+    async function loadAccounts(deleted: boolean) {
         setLoading(true);
-
-        const res = await fetch(`/api/accounts?role=${roleSelected}`);
-
+        const res = await fetch(`/api/accounts${deleted ? '?deleted=true' : ''}`);
+        console.log("res", res);
         if (res.ok) {
             const resp = await res.json();
             console.log("ACCOUNTS", resp);
             setAccounts(resp.accounts);
         }
-
         setLoading(false);
-
     }
 
-    async function eliminar(id: string) {
+    const toggleDeletedAccounts = () => {
+        setDeletedAccounts(!deletedAccounts);
+        loadAccounts(!deletedAccounts);
+    }
 
-        if (!confirm("¿Eliminar usuario?")) return;
-
+    const onDeleteConfirm = async (id: string) => {
         await fetch(`/api/accounts/${id}`, {
             method: "DELETE",
         });
 
-        loadAccounts();
-
+        loadAccounts(deletedAccounts);
+        setShowDeleteAccountModal({ id: null });
     }
 
-    async function reintegrar(id: string) {
-
-        await fetch(`/api/accounts/${id}/restore`, {
-            method: "POST",
+    async function handleDeteleAccount(id: string, name: string) {
+        setShowDeleteAccountModal({
+            id, name
         });
-
-        loadAccounts();
-
     }
+
+    useEffect(() => {
+        loadAccounts(false);
+    }, []);
 
     return (
+        <div className="w-full h-screen overflow-y-scroll">
+            <div className="max-w-6xl mx-auto px-6 py-8">
 
-        <div className="max-w-6xl mx-auto px-6 py-8">
+                <div className="flex flex-col items-end space-y-3 mb-8 w-full md:flex-row md:items-center md:justify-between md:space-y-0 md:space-x-3">
+                    <h1 className="flex gap-3 text-3xl font-bold text-white text-nowrap">
+                        <span className="text-cyan-400">
+                            <GrGroup size={36} />
+                        </span>
+                        Cuentas
+                    </h1>
+                    {isAdmin && (
 
-            <div className="flex justify-between items-center mb-6">
+                        <button
+                            onClick={() => router.push("/accounts/")}
+                            className="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black font-semibold flex items-center gap-2 text-xl"
+                        >
+                            <FaPlus />
+                            Nueva cuenta
+                        </button>
 
-                <h1 className="text-3xl font-bold text-cyan-300 flex items-center gap-3">
-                    <FaUser />
-                    Cuentas
-                </h1>
+                    )}
+                </div>
 
-                {isRPAdmin && (
 
-                    <button
-                        onClick={() => router.push("/accounts/")}
-                        className="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black font-semibold flex items-center gap-2"
-                    >
-                        <FaPlus />
-                        Usuario
-                    </button>
 
+                <div className="flex flex-wrap gap-2 mb-8">
+                    <Tab
+                        text="Eliminados"
+                        active={deletedAccounts}
+                        onClick={toggleDeletedAccounts}
+                    />
+                </div>
+
+                {loading && (
+                    <Loader text="Cargando usuarios..." />
                 )}
 
-            </div>
+                {!loading && accounts.length === 0 && (
+                    <div className="rounded-xl bg-white/5 p-6 text-center text-gray-400">
+                        No hay usuarios.
+                    </div>
+                )}
 
-            <div className="flex flex-wrap gap-2 mb-8">
+                <div className="w-full space-y-5">
+
+    {accounts.map((account, index) => (
+
+        <div
+            key={account._id}
+            className="w-full rounded-xl bg-white/5 border border-cyan-400/20 p-5 backdrop-blur"
+        >
+
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-0">
+
+                <div>
+                    <div className="flex text-2xl text-gray-400 space-x-2">
+                        <span className="mt-1">{index + 1}. </span>
+                        <span className="text-3xl font-semibold text-white">{account.name}</span>
+                        {account.role === "ADMINISTRADOR" && (
+                            <FaStar className="text-yellow-400" />
+                        )}
+                    </div>
+
+                    <div className="text-cyan-200">
+                        {account.email}
+                    </div>
+                </div>
 
                 {isAdmin && (
 
-                    <>
-                        <Tab
-                            text="Administradores"
-                            active={roleSelected === "ADMINISTRADOR"}
-                            onClick={() => setRoleSelected("ADMINISTRADOR")}
-                        />
+                    <div className="flex items-end justify-end gap-2 self-end md:self-auto">
+                        <button
+                            onClick={() => router.push(`/accounts/${account._id}`)}
+                            className="w-22 text-center border-2 rounded-2xl border-blue-400 p-4 hover:bg-blue-900"
+                        >
+                            <FaUserPen size={32} className="text-blue-500 mx-auto" />
+                            <span>Editar</span>
+                        </button>
 
-                        <Tab
-                            text="Embajadores"
-                            active={roleSelected === "EMBAJADOR"}
-                            onClick={() => setRoleSelected("EMBAJADOR")}
-                        />
 
-                        <Tab
-                            text="Portería"
-                            active={roleSelected === "PORTERIA"}
-                            onClick={() => setRoleSelected("PORTERIA")}
-                        />
-                    </>
-
-                )}
-
-                <Tab
-                    text="Eliminados"
-                    active={roleSelected === "ELIMINADO"}
-                    onClick={() => setRoleSelected("ELIMINADO")}
-                />
-
-            </div>
-
-            {loading && (
-
-                <div className="text-center text-cyan-300">
-                    Cargando...
-                </div>
-
-            )}
-
-            {!loading && accounts.length === 0 && (
-
-                <div className="rounded-xl bg-white/5 p-6 text-center text-gray-400">
-                    No hay usuarios.
-                </div>
-
-            )}
-
-            <div className="space-y-5">
-
-                {accounts.map((account, index) => (
-
-                    <div
-                        key={account._id}
-                        className="rounded-xl bg-white/5 border border-cyan-400/20 p-5 backdrop-blur"
-                    >
-
-                        <div className="flex justify-between">
-
-                            <div>
-                                <div className="flex text-2xl text-gray-400 space-x-2">
-                                    <span className="mt-1">{index + 1}. </span>
-                                    <span className="text-3xl font-semibold text-white">{account.name}</span>
-                                    {account.role === "ADMINISTRADOR" && (
-                                        <FaStar className="text-yellow-400" />
-                                    )}                                    
-                                </div>
-
-                                <h2 className="text-xl font-semibold text-white mt-1 flex items-center gap-2">
-                                    
-                                </h2>
-                                <div className="text-cyan-200">
-                                    {account.email}
-                                </div>
-                            </div>
-
-                            {isRPAdmin && (
-
-                                <div className="flex items-start gap-2">
-                                    <button
-                                        onClick={() => router.push(`/accounts/${account._id}`)}
-                                        className="w-22 text-center border-2 rounded-2xl border-blue-400 p-4 hover:bg-blue-900"
-                                    >
-                                        <FaUserPen size={32} className="text-blue-500 mx-auto" />
-                                        <span>Editar</span>
-                                    </button>
-
-                                    {roleSelected === "ELIMINADO" ? (
-                                        <button
-                                            onClick={() => reintegrar(account._id)}
-                                            className="w-22 text-center border-2 rounded-2xl border-green-400 p-4"
-                                        >
-                                            <FaRotateLeft size={32} className="text-red-green mx-auto" />
-                                        </button>
-                                    ) : (
-                                        <button
-                                            onClick={() => eliminar(account._id)}
-                                            className="w-22 text-center border-2 rounded-2xl border-red-400 p-4"
-                                        >
-                                            <FaTrash size={32} className="text-red-600 mx-auto" />
-                                            <span>Eliminar</span>
-                                        </button>
-                                    )}
-                                </div>
-                            )}
-                        </div>
+                        <button
+                            onClick={() => handleDeteleAccount(account._id, account.name)}
+                            className="w-28 text-center border-2 rounded-2xl border-green-400 p-4"
+                        >
+                            {deletedAccounts ? <><FaRotateLeft size={32} className="text-red-green mx-auto" /><span>Reintegrar</span></>
+                                : <><FaTrash size={32} className="text-red-600 mx-auto" /><span>Eliminar</span></>}
+                        </button>
                     </div>
-                ))}
+                )}
+            </div>
+        </div>
+    ))}
+</div>
+                <DeleteAccountModal
+                    show={showDeleteAccountModal.id !== null}
+                    onClose={() => { setShowDeleteAccountModal({ id: null }) }}
+                    isPending={loading}
+                    onConfirm={() => onDeleteConfirm(showDeleteAccountModal.id || "")}
+                    deleteAccount={!deletedAccounts}
+                    userName={showDeleteAccountModal.name ?? ""} />
             </div>
         </div>
     );

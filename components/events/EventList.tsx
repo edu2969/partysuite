@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { BiParty } from "react-icons/bi";
 import Link from "next/link";
 import { FaPlus } from "react-icons/fa6";
+import DeleteAccountModal from "../modals/DeleteAccountModal";
 
 interface EventData {
   _id: string;
@@ -41,8 +42,8 @@ export default function EventsList({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [generatingBI, setGeneratingBI] =
-    useState<string | null>(null);
+  const [generatingBI, setGeneratingBI] = useState<string | null>(null);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
 
   const isRPAdmin = user.role === "ADMINISTRADOR";
   const isNeo = user.role === "NEO";
@@ -140,7 +141,46 @@ export default function EventsList({
     }
   };
 
-  const handleDelete = async (
+  const onDeleteConfirm = async (eventId: string) => {
+        try {
+      setDeleting(eventId);
+
+      const response = await fetch(
+        `/api/events/${eventId}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message ||
+            "No fue posible eliminar el evento"
+        );
+      }
+
+      setEvents((current) =>
+        current.filter(
+          (event) =>
+            event._id !== eventId
+        )
+      );
+    } catch (error) {
+      console.error(error);
+
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Error eliminando evento"
+      );
+    } finally {
+      setDeleting(null);
+    }
+  }
+
+const handleDelete = async (
     eventId: string,
     eventName: string
   ) => {
@@ -204,19 +244,21 @@ export default function EventsList({
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
 
-      <div className="flex mb-8 space-x-3">
-        <h1 className="flex w-full justify-left gap-3 text-3xl font-bold text-white text-nowrap">
-          <span className="text-cyan-400">
-            <BiParty />
-          </span>
-          Listado de Eventos!
-        </h1>
-        {isRPAdmin && (<div className="flex justify-end w-full text-right text-2xl">
-          <div className="rounded-md bg-cyan-600 text-white hover:bg-cyan-500">
-            <Link className="flex gap-2 px-5 py-2 items-center" href="/events/new"><FaPlus /> Nuevo evento</Link>
-          </div>
-        </div>)}
+<div className="flex flex-col items-end space-y-3 mb-8 w-full md:flex-row md:items-center md:justify-between md:space-y-0 md:space-x-3">
+  <h1 className="flex gap-3 text-3xl font-bold text-white text-nowrap">
+    <span className="text-cyan-400">
+      <BiParty />
+    </span>
+    Listado de Eventos!
+  </h1>
+  {isRPAdmin && (
+    <div className="text-2xl">
+      <div className="rounded-md bg-cyan-600 text-white hover:bg-cyan-500">
+        <Link className="flex gap-2 px-5 py-2 items-center" href="/events/new"><FaPlus /> Nuevo evento</Link>
       </div>
+    </div>
+  )}
+</div>
 
       {error && (
         <div className="mb-6 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-400">
@@ -348,7 +390,6 @@ export default function EventsList({
 
         </div>
       )}
-
     </main>
   );
 }

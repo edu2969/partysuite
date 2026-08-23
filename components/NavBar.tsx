@@ -16,6 +16,8 @@ import {
     FaRightFromBracket,
     FaStar,
 } from "react-icons/fa6";
+import { BiSolidInvader } from "react-icons/bi";
+import { TbGhost2Filled } from "react-icons/tb";
 
 export default function TopNavigator() {
 
@@ -69,6 +71,7 @@ export default function TopNavigator() {
                     alt="Marco"
                     fill
                     priority
+                    sizes="360px"
                     className="object-fill pointer-events-none select-none py-10"
                 />
 
@@ -109,7 +112,10 @@ export default function TopNavigator() {
                                 {session?.user?.name || "Usuario"}
                                 {isAdmin && (<div className="ml-1">
                                     <FaStar className="text-sm text-yellow-400" />
-                                </div>)}  
+                                </div>)}
+                                {isNeo && (<div className="ml-1">
+                                    <BiSolidInvader className="text-3xl text-green-400" />
+                                </div>)} 
                             </span>                            
                         </div>
 
@@ -161,16 +167,12 @@ export default function TopNavigator() {
 
                         )}
 
-                        {isNeo && (
-
-                            <MenuItem
-                                href="/about"
-                                icon={<FaChartColumn size={26} />}
-                                text="Acerca de..."
-                                close={() => setMenuActivo(false)}
-                            />
-
-                        )}
+                        <MenuItem
+                            href="/about"
+                            icon={<TbGhost2Filled size={26} />}
+                            text="Acerca de..."
+                            close={() => setMenuActivo(false)}
+                        />
 
                     </div>
 
@@ -179,7 +181,8 @@ export default function TopNavigator() {
                     <button
                         className="
                             absolute
-                            bottom-16
+                            bottom-22
+                            md:bottom-16
                             left-28
                             flex
                             items-center

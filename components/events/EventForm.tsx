@@ -7,6 +7,8 @@ import { MdEditCalendar } from "react-icons/md";
 import PieChart from "../prefabs/PieChart";
 import VerticalRankingBar from "../prefabs/VerticalRankingBar";
 import { RPData } from "./types";
+import { FiLoader } from "react-icons/fi";
+import Loader from "../prefabs/Loader";
 
 interface EventData {
   _id?: string;
@@ -173,19 +175,17 @@ export default function EventForm({ eventId }: EventEditProps) {
   };
 
   if (loading) {
-    return (
-      <div className="flex min-h-100 items-center justify-center text-gray-400">
-        Cargando evento...
-      </div>
-    );
+    return <Loader text="Cargando evento" />;
   }
 
-  const totalArrives = event?.arrives || 0;
+  const handleBack = () => {
+    router.back();
+  }
 
   return (
     <main className="w-full h-screen overflow-y-scroll">
       <div className="mx-auto max-w-6xl p-6">
-        <div className="flex mb-8 space-x-3 text-cyan-400">
+        <div className="flex justify-end md:justify-start mb-8 space-x-3 text-cyan-400">
           <MdEditCalendar size={36} />
           <h1 className="text-3xl font-bold">
             {event?._id
@@ -260,7 +260,13 @@ export default function EventForm({ eventId }: EventEditProps) {
               </div>
             )}
 
-            <div className="mt-6 flex justify-end">
+            <div className="mt-6 flex justify-end space-x-4 text-2xl">
+              <button
+                onClick={handleBack}
+                className="rounded-lg bg-neutral-600 px-6 py-3 font-semibold text-white transition hover:bg-neutral-500 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                ← Volver
+              </button>
               <button
                 type="submit"
                 disabled={saving}
@@ -320,7 +326,7 @@ export default function EventForm({ eventId }: EventEditProps) {
                 aria-selected={activeTab === 'ranking'}
                 aria-controls="panel-ranking"
                 onClick={() => setActiveTab('ranking')}
-                className={`border-b-2 px-2 pb-3 text-sm font-medium transition ${activeTab === 'tabla'
+                className={`border-b-2 px-2 pb-3 text-sm font-medium transition ${activeTab === 'ranking'
                     ? 'border-cyan-500 text-cyan-400'
                     : 'border-transparent text-gray-400 hover:text-white'
                   }`}

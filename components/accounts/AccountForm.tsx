@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { FaSave } from "react-icons/fa";
+import { FaSave, FaUserEdit } from "react-icons/fa";
+import { FiLoader } from "react-icons/fi";
 
 interface Account {
     _id?: string;
@@ -178,21 +179,28 @@ export default function AccountForm({
     if (accountId && loading) {
 
         return (
-            <div className="max-w-3xl mx-auto p-8 text-center text-cyan-300">
-                Cargando cuenta...
+            <div className="flex min-h-screen items-center justify-center text-gray-400 text-2xl">
+                <FiLoader className="w-5 h-5 mr-3 animate-spin" /> Cargando cuenta
             </div>
         );
 
+    }
+
+    function handleBack() {
+        router.back();
     }
 
     return (
 
         <div className="max-w-3xl mx-auto p-8">
 
-            <h1 className="text-3xl font-bold text-cyan-300 mb-8">
-                {account ? "Edición de " : "Nuevo "}
-                {roleName()}
-            </h1>
+            <div className="w-full flex justify-end md:justify-start mb-8 space-x-3 text-cyan-400">
+                <FaUserEdit size={36} />
+                <h1 className="text-3xl font-bold">
+                    {account ? "Edición de " : "Nuevo "}
+                    {roleName()}
+                </h1>                
+            </div>
 
             {error && (
                 <div className="mb-6 rounded-lg border border-red-500 bg-red-500/20 p-4 text-red-300">
@@ -265,14 +273,22 @@ export default function AccountForm({
                     </label>
                 )}
 
+<div className="flex space-x-4">
+    <button
+    onClick={handleBack}
+                    className="w-full rounded-lg bg-neutral-500 hover:bg-neutral-400 font-bold py-3 flex justify-center items-center gap-3 transition text-2xl text-white"
+                >                    
+                    &lt;&lt; Volver
+                </button>
                 <button
                     type="submit"
                     disabled={saveMutation.isPending}
-                    className="w-full rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black font-bold py-3 flex justify-center items-center gap-3 transition"
+                    className="w-full rounded-lg bg-cyan-500 hover:bg-cyan-400 font-bold py-3 flex justify-center items-center gap-3 transition text-2xl text-white"
                 >
                     <FaSave />
                     {saveMutation.isPending ? "Guardando..." : "Guardar"}
                 </button>
+                </div>
 
             </form>
 

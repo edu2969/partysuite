@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { useState } from "react";
 import Image from "next/image";
+import { FiLoader } from "react-icons/fi";
 
 interface LoginFormProps {
   email: string;
@@ -13,6 +14,7 @@ interface LoginFormProps {
 
 export default function LoginForm() {
   const router = useRouter();
+  const [loading, setLoading] = useState(false);
 
   const {
     register,
@@ -23,6 +25,7 @@ export default function LoginForm() {
   const [error, setError] = useState<string | boolean>(false);
 
   const onSubmit = async (data: LoginFormProps) => {
+    setLoading(true);
     setError(false);
 
     try {
@@ -53,6 +56,8 @@ export default function LoginForm() {
     } catch (error) {
       console.log(error);
       setError("Ocurrió un error al iniciar sesión");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -185,9 +190,10 @@ export default function LoginForm() {
             {/* Botón */}
             <button
               type="submit"
-              className="flex w-full justify-center rounded-lg bg-cyan-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-cyan-500/20 transition hover:bg-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 focus:ring-offset-gray-900"
-            >
-              Entrar
+              className="flex w-full justify-center rounded-lg bg-cyan-500 px-4 py-2.5 text-xl font-semibold text-white shadow-lg shadow-cyan-500/20 transition hover:bg-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 focus:ring-offset-gray-900"
+            >{loading ? <>
+                <FiLoader className="w-5 h-5 mt-1 mr-3 animate-spin" /> Validando
+              </> : 'Entrar'}              
             </button>
           </form>
 

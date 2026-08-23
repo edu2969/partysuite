@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectMongoDB } from "@/lib/mongodb";
 import Guest from "@/models/guest";
-import { getSession } from "next-auth/react";
+import { auth } from "@/app/utils/auth";
 
 interface RouteContext {
   params: Promise<{
@@ -14,7 +14,8 @@ export async function GET(
   context: RouteContext
 ) {
   try {
-    const session = await getSession();
+    console.log("[GET] /api/guests GETTING Guest...")
+    const session = await auth();
 
     if (!session?.user?.id) {
       return NextResponse.json(
@@ -23,27 +24,16 @@ export async function GET(
       );
     }
 
-    const { guestId } =
-      await context.params;
-
+    const { guestId } = await context.params;
     await connectMongoDB();
-
-    const guest =
-      await Guest.findById(
-        guestId
-      ).lean();
+    const guest = await Guest.findById(guestId).lean();
 
     if (!guest) {
-      return NextResponse.json(
-        {
-          message:
-            "Invitado no encontrado",
-        },
-        { status: 404 }
-      );
+      return NextResponse.json({ ok: false, error: "Invitado no encontrado" }, { status: 404 });
     }
 
     return NextResponse.json({
+      ok: true,
       guest,
     });
   } catch (error) {
@@ -67,7 +57,7 @@ export async function PUT(
   context: RouteContext
 ) {
   try {
-    const session = await getSession();
+    const session = await auth();
 
     if (!session?.user?.id) {
       return NextResponse.json(

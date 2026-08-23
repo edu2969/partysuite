@@ -9,7 +9,7 @@ export default function About({
 }) {
     return (<div className="w-screen h-screen">
         <div className="h-screen flex justify-center items-center animate-entrance">
-            <div className="ml-6">
+            <div className="ml-6 scale-50 md:scale-100">
                 <div className="flex">
                     <p className="text-7xl text-gray-500 mb-6">PartySuite</p>
                     <span className="text-lg ml-7 text-gray-400 mt-10">versión 1.0</span>

@@ -104,3 +104,54 @@ export async function PUT(
   }
 }
 
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ accountId: string }> }
+) {
+  // --- Autenticación / autorización ---
+  // Mismo check que el PUT — se repite acá porque el route es
+  // el que realmente decide qué se puede borrar en la base de datos.
+  const session = await auth();
+
+  console.log("----> byId DELETE --->[accountId]/");
+
+  if (!session?.user) {
+    return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+  }
+
+  const userRole = session.user.role;
+  if (userRole !== "ADMINISTRADOR" && userRole !== "NEO") {
+    return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  }
+
+  const { accountId } = await params;
+
+  if (!mongoose.Types.ObjectId.isValid(accountId)) {
+    return NextResponse.json({ error: "id inválido" }, { status: 400 });
+  }
+
+  // Evita que un admin se borre a sí mismo por accidente y quede sin acceso
+  if (session.user.id === accountId) {
+    return NextResponse.json(
+      { error: "No puedes eliminar tu propia cuenta" },
+      { status: 400 }
+    );
+  }
+
+  console.log("Params", accountId);
+
+  await connectMongoDB();
+
+  try {
+    const user = await User.findById(accountId);
+    const deleted = user.role === "ELIMINADO";    
+    await User.findByIdAndUpdate(accountId, { 
+      role: deleted ? "EMBAJADOR" : "ELIMINADO"
+    });
+    return NextResponse.json({ success: true, deletedId: accountId });
+  } catch (err: unknown) {
+    console.error("Error al eliminar la cuenta", err);
+    return NextResponse.json({ error: "Error al eliminar la cuenta" }, { status: 500 });
+  }
+}
+

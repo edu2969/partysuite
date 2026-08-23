@@ -5,18 +5,19 @@ import { connectMongoDB } from "@/lib/mongodb";
 import { auth } from "@/app/utils/auth";
 
 export async function GET(req: NextRequest) {
+    console.log("[GET] Accounts By params..");
     const session = await auth();
     if(!session || (session.user?.role !== "ADMINISTRADOR" 
         && session.user?.role !== "NEO")
     ) {
         return NextResponse.json({ ok: false, error: "No session" });
     }
-    const role = req.nextUrl.searchParams.get("role");
+    const deleted = req.nextUrl.searchParams.get("deleted");
 
-    console.log("GET /api/accounts?role=", role);   
+    console.log("GET /api/accounts?deleted=", deleted);   
 
     await connectMongoDB();
-    const users = await User.find({ role: role === "ELIMINADOS" ? 'ELIMINADOS' : { $in: ["ADMINISTRADOR", "EMBAJADOR"] } });
+    const users = await User.find({ role: deleted ? 'ELIMINADO' : { $in: ["ADMINISTRADOR", "EMBAJADOR"] } });
 
     return NextResponse.json({ accounts: users });
 }
@@ -29,26 +30,20 @@ export async function POST(req: NextRequest) {
     await connectMongoDB();
 
     const {
-        username,
         name,
         email,
         password,
         role,
     } = await req.json();
 
-    if (!username || !name || !email || !password || !role) {
+    if (!name || !email || !password || !role) {
         return NextResponse.json(
             { message: "Datos incompletos" },
             { status: 400 }
         );
     }
 
-    const exists = await User.findOne({
-        $or: [
-            { username },
-            { email }
-        ]
-    });
+    const exists = await User.findOne({ email });
 
     if (exists) {
         return NextResponse.json(
@@ -61,7 +56,6 @@ export async function POST(req: NextRequest) {
     const passwordHash = await bcrypt.hash(password, 12);
 
     const user = await User.create({
-        username,
         name,
         email,
         password: passwordHash,
