@@ -44,7 +44,7 @@ export default function LoginForm() {
       if(session) {
         const userRole = session.user?.role;
         if (userRole === "ADMINISTRADOR" || userRole === "NEO") {
-          router.push("/manager");
+          router.push("/events");
         } else if (userRole === "PORTERIA") {
           router.push("/welcome");
         } else if (userRole === "EMBAJADOR") {

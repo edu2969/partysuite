@@ -58,8 +58,6 @@ export default function Welcome() {
     }
   }, [])
 
-  // --- Equivalente a Template.welcome.rendered (sin la parte de LaunchScreen,
-  // que es una API exclusiva de Meteor Cordova sin equivalente en Next.js web) ---
   useEffect(() => {
     rutInputRef.current?.focus()
     setMessages({})
@@ -69,6 +67,16 @@ export default function Welcome() {
     function handleWindowKeydown(e: KeyboardEvent) {
       if (e.key === "b") {
         document.getElementById('btn-ban')?.click()
+      }
+
+      // Si el foco no está en el input del RUT (por ejemplo, el operador
+      // hizo clic en otro lugar, o algún elemento robó el foco), lo
+      // recuperamos para que el lector de código de barras -que dispara
+      // estos mismos eventos de teclado a nivel global- siga funcionando
+      // sin que alguien tenga que hacer clic manualmente en el campo.
+      const input = rutInputRef.current
+      if (input && document.activeElement !== input && !input.disabled) {
+        input.focus()
       }
     }
 

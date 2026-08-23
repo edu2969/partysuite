@@ -159,7 +159,7 @@ export default function AttendersImport({
 
   if (!event) {
     return (
-      <main className="flex min-h-screen items-center justify-center">
+      <main className="flex w-full min-h-screen items-center justify-center">
         <div className="text-center">
           <h3 className="text-xl font-semibold text-red-400">
             Evento no encontrado
@@ -177,8 +177,8 @@ export default function AttendersImport({
     );
   }
 
-  return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+  return (<main className="w-full h-screen overflow-y-scroll">
+    <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
 
       <div className="mb-6">
         <h3 className="flex justify-end md:justify-start gap-2 text-3xl font-semibold text-white">
@@ -321,6 +321,7 @@ Maria Gonzalez 15234567-8`}
         </button>
       </div>
 
+    </div>
     </main>
   );
 }

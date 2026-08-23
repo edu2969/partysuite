@@ -8,6 +8,7 @@ export default function About({
     isNeo: boolean;
 }) {
     return (<div className="w-screen h-screen">
+        <div className="rainbow scale-[400%]"></div>
         <div className="h-screen flex justify-center items-center animate-entrance">
             <div className="ml-6 scale-50 md:scale-100">
                 <div className="flex">
