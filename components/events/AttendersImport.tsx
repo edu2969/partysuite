@@ -177,7 +177,7 @@ export default function AttendersImport({
     );
   }
 
-  return (<main className="w-full h-screen overflow-y-scroll">
+  return (<main className="w-full h-screen overflow-y-auto">
     <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
 
       <div className="mb-6">

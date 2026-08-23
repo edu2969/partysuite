@@ -121,7 +121,7 @@ export default function EventsList({
       if (!response.ok) {
         throw new Error(
           data.message ||
-            "No fue posible generar el BI"
+          "No fue posible generar el BI"
         );
       }
 
@@ -142,7 +142,7 @@ export default function EventsList({
   };
 
   const onDeleteConfirm = async (eventId: string) => {
-        try {
+    try {
       setDeleting(eventId);
 
       const response = await fetch(
@@ -157,7 +157,7 @@ export default function EventsList({
       if (!response.ok) {
         throw new Error(
           data.message ||
-            "No fue posible eliminar el evento"
+          "No fue posible eliminar el evento"
         );
       }
 
@@ -180,7 +180,7 @@ export default function EventsList({
     }
   }
 
-const handleDelete = async (
+  const handleDelete = async (
     eventId: string,
     eventName: string
   ) => {
@@ -207,7 +207,7 @@ const handleDelete = async (
       if (!response.ok) {
         throw new Error(
           data.message ||
-            "No fue posible eliminar el evento"
+          "No fue posible eliminar el evento"
         );
       }
 
@@ -241,24 +241,24 @@ const handleDelete = async (
     );
   }
 
-  return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+  return (<main className="w-full h-screen overflow-y-auto">
+    <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
 
-<div className="flex flex-col items-end space-y-3 mb-8 w-full md:flex-row md:items-center md:justify-between md:space-y-0 md:space-x-3">
-  <h1 className="flex gap-3 text-3xl font-bold text-white text-nowrap">
-    <span className="text-cyan-400">
-      <BiParty />
-    </span>
-    Listado de Eventos!
-  </h1>
-  {isRPAdmin && (
-    <div className="text-2xl">
-      <div className="rounded-md bg-cyan-600 text-white hover:bg-cyan-500">
-        <Link className="flex gap-2 px-5 py-2 items-center" href="/events/new"><FaPlus /> Nuevo evento</Link>
+      <div className="flex flex-col items-end space-y-3 mb-8 w-full md:flex-row md:items-center md:justify-between md:space-y-0 md:space-x-3">
+        <h1 className="flex gap-3 text-3xl font-bold text-white text-nowrap">
+          <span className="text-cyan-400">
+            <BiParty />
+          </span>
+          Listado de Eventos!
+        </h1>
+        {isRPAdmin && (
+          <div className="text-2xl">
+            <div className="rounded-md bg-cyan-600 text-white hover:bg-cyan-500">
+              <Link className="flex gap-2 px-5 py-2 items-center" href="/events/new"><FaPlus /> Nuevo evento</Link>
+            </div>
+          </div>
+        )}
       </div>
-    </div>
-  )}
-</div>
 
       {error && (
         <div className="mb-6 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-400">
@@ -286,25 +286,19 @@ const handleDelete = async (
                 <div className="min-w-0">
 
                   <h2 className="text-3xl font-semibold text-white">
-                    {event.name}
-
-                    <span className="ml-2 text-lg font-normal text-gray-400">
-                      Asisten{" "}
-                      <span className="text-cyan-400">
-                        {event.arrives || 0}
-                      </span>{" "}
-                      de{" "}
-                      {event.total || 0}
-                    </span>
+                    {event.name}                    
                   </h2>
 
-                  <span className="mt-1 block text-xl text-gray-400">
+                  <span className="text-lg font-normal text-gray-400">
+                      Asisten <span className="text-cyan-400">{event.arrives || 0}</span> de {event.total || 0}</span>
+
+                  <span className="block text-2xl text-gray-200">
                     {formatDate(event.date)}
                   </span>
 
                 </div>
 
-                <div className="flex flex-wrap justify-end gap-2">
+                <div className="flex flex-wrap justify-end gap-2 text-2xl">
 
                   {isNeo && (
                     <button
@@ -316,10 +310,10 @@ const handleDelete = async (
                         generatingBI ===
                         event._id
                       }
-                      className="rounded-lg bg-blue-600 px-3 py-2 text-3xl font-medium text-white transition hover:bg-blue-500 disabled:opacity-50"
+                      className="rounded-lg bg-blue-600 px-3 py-2 font-medium text-white transition hover:bg-blue-500 disabled:opacity-50"
                     >
                       {generatingBI ===
-                      event._id ? (
+                        event._id ? (
                         "BI..."
                       ) : (
                         <>
@@ -334,7 +328,7 @@ const handleDelete = async (
                     onClick={() =>
                       handleList(event._id)
                     }
-                    className="rounded-lg bg-blue-600 px-3 py-2 text-3xl font-medium text-white transition hover:bg-blue-500"
+                    className="rounded-lg bg-blue-600 px-3 py-2 font-medium text-white transition hover:bg-blue-500"
                   >
                     ☷ Lista
                   </button>}
@@ -344,7 +338,7 @@ const handleDelete = async (
                     onClick={() =>
                       handleEdit(event._id)
                     }
-                    className="rounded-lg bg-blue-600 px-3 py-2 text-3xl font-medium text-white transition hover:bg-blue-500"
+                    className="rounded-lg bg-blue-600 px-3 py-2 font-medium text-white transition hover:bg-blue-500"
                   >
                     ◉ Ver
                   </button>}
@@ -354,7 +348,7 @@ const handleDelete = async (
                     onClick={() =>
                       handleImport(event._id)
                     }
-                    className="rounded-lg bg-blue-600 px-3 py-2 text-3xl font-medium text-white transition hover:bg-blue-500"
+                    className="rounded-lg bg-blue-600 px-3 py-2 font-medium text-white transition hover:bg-blue-500"
                   >
                     ↓ Importar
                   </button>
@@ -372,10 +366,10 @@ const handleDelete = async (
                         deleting ===
                         event._id
                       }
-                      className="rounded-lg bg-red-600 px-3 py-2 text-3xl font-medium text-white transition hover:bg-red-500 disabled:opacity-50"
+                      className="rounded-lg bg-red-600 px-3 py-2 font-medium text-white transition hover:bg-red-500 disabled:opacity-50"
                     >
                       {deleting ===
-                      event._id
+                        event._id
                         ? "Eliminando..."
                         : "♲ Eliminar"}
                     </button>
@@ -390,6 +384,7 @@ const handleDelete = async (
 
         </div>
       )}
-    </main>
+    </div>
+  </main>
   );
 }
