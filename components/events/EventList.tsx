@@ -6,6 +6,7 @@ import { BiParty } from "react-icons/bi";
 import Link from "next/link";
 import { FaPlus } from "react-icons/fa6";
 import DeleteAccountModal from "../modals/DeleteAccountModal";
+import { finished } from "stream";
 
 interface EventData {
   _id: string;
@@ -13,6 +14,7 @@ interface EventData {
   date: string;
   total: number;
   arrives: number;
+  closeTime: number;
 }
 
 interface SessionUser {
@@ -71,6 +73,7 @@ export default function EventsList({
       }
 
       const data = await response.json();
+      console.log("DATA", data);
       setEvents(data || []);
     } catch (error) {
       console.error(error);
@@ -179,6 +182,16 @@ export default function EventsList({
       setDeleting(null);
     }
   }
+
+  const isFinished = (fechaCierre: Date, ms: number): boolean => {
+      const cierre = new Date(fechaCierre);
+
+      cierre.setHours(0, 0, 0, 0);
+      cierre.setDate(cierre.getDate() + 1);
+      cierre.setTime(cierre.getTime() + ms);
+
+      return new Date() >= cierre;
+  };
 
   const handleDelete = async (
     eventId: string,
@@ -343,7 +356,7 @@ export default function EventsList({
                     ◉ Ver
                   </button>}
 
-                  <button
+                  {!isFinished(new Date(event.date), event.closeTime) && <button
                     type="button"
                     onClick={() =>
                       handleImport(event._id)
@@ -351,9 +364,9 @@ export default function EventsList({
                     className="rounded-lg bg-blue-600 px-3 py-2 font-medium text-white transition hover:bg-blue-500"
                   >
                     ↓ Importar
-                  </button>
+                  </button>}
 
-                  {isRPAdmin && (
+                  {isRPAdmin && isFinished(new Date(event.date), event.closeTime) && (
                     <button
                       type="button"
                       onClick={() =>
