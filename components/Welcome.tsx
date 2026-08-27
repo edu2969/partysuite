@@ -7,8 +7,11 @@ import { GoAlertFill } from "react-icons/go";
 import { PiWarningOctagonFill } from "react-icons/pi";
 import { launchConfetti } from '@/app/utils/confeti'
 import { FaCheckCircle } from 'react-icons/fa';
+import { TbCameraSearch } from "react-icons/tb";
+import { useRouter } from 'next/navigation';
 
 export default function Welcome() {
+  const router = useRouter();
   const [time, setTime] = useState('00:00:00')
   const [actualEvent, setActualEvent] = useState<EventInfo | null>(null)
   const [messages, setMessages] = useState<ImportMessages>({})
@@ -207,6 +210,10 @@ export default function Welcome() {
     setDudosa((prev) => !prev)
   }
 
+  function handleSwitchMethod() {
+    router.push("/welcome2");
+  }
+
   return (
     <div className="relative flex flex-col items-center justify-center h-screen w-full bg-black text-white">
       <div className="area absolute inset-0 z-0">
@@ -327,6 +334,11 @@ export default function Welcome() {
               </div>
             </div>)}
 
+        </div>
+        <div className="absolute bottom-4 right-4">
+          <button onClick={handleSwitchMethod}>
+            <TbCameraSearch size={52}/>
+          </button>
         </div>
       </div>
     </div>
