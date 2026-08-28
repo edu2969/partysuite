@@ -143,10 +143,10 @@ export default function TopNavigator() {
 
                         {/* BI */}
 
-                        {isNeo && (
+                        {isAdmin && (
 
                             <MenuItem
-                                href="/business-intelligence"
+                                href="/stats"
                                 icon={<FaChartColumn size={26} />}
                                 text="Dashboards"
                                 close={() => setMenuActivo(false)}
