@@ -1,9 +1,9 @@
-import { RPData } from "../events/types";
+import { ListeroData } from "../events/types";
 
 export default function PieChart({
   rps,
 }: {
-  rps: RPData[];
+  rps: ListeroData[];
 }) {
   console.log("RPs", rps)
   const total = rps.reduce(

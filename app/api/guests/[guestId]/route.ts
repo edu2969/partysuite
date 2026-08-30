@@ -68,7 +68,7 @@ export async function PUT(
 
     const canEdit =
       session.user.role === "ADMINISTRADOR" ||
-      session.user.role === "EMBAJADOR";
+      session.user.role === "LISTERO";
 
     if (!canEdit) {
       return NextResponse.json(

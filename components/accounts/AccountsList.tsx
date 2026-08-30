@@ -12,6 +12,8 @@ import {
     FaRotateLeft,
     FaStar,
 } from "react-icons/fa6";
+import { MdOutlineSelfImprovement } from "react-icons/md";
+
 import DeleteAccountModal from "../modals/DeleteAccountModal";
 import Loader from "../prefabs/Loader";
 
@@ -19,7 +21,7 @@ interface Account {
     _id: string;
     email: string;
     name: string;
-    role: "ADMINISTRADOR" | "PORTERIA" | "NEO" | "ELIMINADO";
+    role: "ADMINISTRADOR" | "PORTERIA" | "NEO" | "ELIMINADO" | "LISTERO" | "LISTERO_PRO";
 }
 
 export default function AccountsList() {
@@ -123,54 +125,57 @@ export default function AccountsList() {
 
                 <div className="w-full space-y-5">
 
-    {accounts.map((account, index) => (
+                    {accounts.map((account, index) => (
 
-        <div
-            key={account._id}
-            className="w-full rounded-xl bg-white/5 border border-cyan-400/20 p-5 backdrop-blur"
-        >
+                        <div
+                            key={account._id}
+                            className="w-full rounded-xl bg-white/5 border border-cyan-400/20 p-5 backdrop-blur"
+                        >
 
-            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-0">
+                            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-0">
 
-                <div>
-                    <div className="flex text-2xl text-gray-400 space-x-2">
-                        <span className="mt-1">{index + 1}. </span>
-                        <span className="text-3xl font-semibold text-white">{account.name}</span>
-                        {account.role === "ADMINISTRADOR" && (
-                            <FaStar className="text-yellow-400" />
-                        )}
-                    </div>
+                                <div>
+                                    <div className="flex text-2xl text-gray-400">
+                                        <span className="mt-1 mr-2">{index + 1}. </span>
+                                        <span className="text-3xl font-semibold text-white">{account.name}</span>
+                                        {account.role === "ADMINISTRADOR" && (
+                                            <FaStar className="text-yellow-400" />
+                                        )}
+                                        {account.role === "LISTERO_PRO" && (
+                                           <> <MdOutlineSelfImprovement size={34} className="text-yellow-400" /><span className="text-xs text-yellow-400">PRO</span></>
+                                        )}
+                                    </div>
 
-                    <div className="text-cyan-200">
-                        {account.email}
-                    </div>
+                                    <div className="text-cyan-200">
+                                        {account.email}
+                                    </div>
+                                </div>
+
+                                {isAdmin && (
+
+                                    <div className="flex items-end justify-end gap-2 self-end md:self-auto">
+                                        <button
+                                            onClick={() => router.push(`/accounts/${account._id}`)}
+                                            className="w-22 text-center border-2 rounded-2xl border-blue-400 p-4 hover:bg-blue-900"
+                                        >
+                                            <FaUserPen size={32} className="text-blue-500 mx-auto" />
+                                            <span>Editar</span>
+                                        </button>
+
+
+                                        <button
+                                            onClick={() => handleDeteleAccount(account._id, account.name)}
+                                            className="w-28 text-center border-2 rounded-2xl border-green-400 p-4"
+                                        >
+                                            {deletedAccounts ? <><FaRotateLeft size={32} className="text-red-green mx-auto" /><span>Reintegrar</span></>
+                                                : <><FaTrash size={32} className="text-red-600 mx-auto" /><span>Eliminar</span></>}
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    ))}
                 </div>
-
-                {isAdmin && (
-
-                    <div className="flex items-end justify-end gap-2 self-end md:self-auto">
-                        <button
-                            onClick={() => router.push(`/accounts/${account._id}`)}
-                            className="w-22 text-center border-2 rounded-2xl border-blue-400 p-4 hover:bg-blue-900"
-                        >
-                            <FaUserPen size={32} className="text-blue-500 mx-auto" />
-                            <span>Editar</span>
-                        </button>
-
-
-                        <button
-                            onClick={() => handleDeteleAccount(account._id, account.name)}
-                            className="w-28 text-center border-2 rounded-2xl border-green-400 p-4"
-                        >
-                            {deletedAccounts ? <><FaRotateLeft size={32} className="text-red-green mx-auto" /><span>Reintegrar</span></>
-                                : <><FaTrash size={32} className="text-red-600 mx-auto" /><span>Eliminar</span></>}
-                        </button>
-                    </div>
-                )}
-            </div>
-        </div>
-    ))}
-</div>
                 <DeleteAccountModal
                     show={showDeleteAccountModal.id !== null}
                     onClose={() => { setShowDeleteAccountModal({ id: null }) }}
@@ -214,7 +219,6 @@ function Tab({
             {text}
 
         </button>
-
     );
 
 }

@@ -12,8 +12,8 @@ export default function About({
         <div className="h-screen flex justify-center items-center animate-entrance">
             <div className="ml-6 scale-50 md:scale-100">
                 <div className="flex">
-                    <p className="text-7xl text-gray-500 mb-6">PartySuite</p>
-                    <span className="text-lg ml-7 text-gray-400 mt-10">versión 1.0</span>
+                    <p className="text-8xl text-gray-500 mb-6 rainbow-text">PartySuite</p>
+                    <span className="text-lg ml-7 text-gray-300 mt-14">v1.0</span>
                 </div>
                 <div className="ml-2 opacity-50 text-right">
                     <span>Powered By</span>

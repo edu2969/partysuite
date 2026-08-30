@@ -1,4 +1,4 @@
-export const ACCOUNT_ROLES = ["ADMINISTRADOR", "PORTERIA", "EMBAJADOR", "NEO"] as const;
+export const ACCOUNT_ROLES = ["ADMINISTRADOR", "PORTERIA", "LISTERO", "NEO", "LISTERO_PRO", "ELIMINADO"] as const;
  
 export type AccountRole = (typeof ACCOUNT_ROLES)[number];
  

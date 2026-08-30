@@ -9,6 +9,6 @@ export default async function AccountFormPage() {
         return <div className="text-center text-red-500">No tienes permiso para acceder a esta página.</div>;
     }
     return <QueryProvider>
-        <AccountForm roleSelected={"EMBAJADOR"} />
+        <AccountForm roleSelected={"LISTERO"} />
     </QueryProvider>;
 }

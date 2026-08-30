@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
 
     if (
       session.user.role !== "ADMINISTRADOR" &&
-      session.user.role !== "EMBAJADOR"
+      session.user.role !== "LISTERO"
     ) {
       return NextResponse.json(
         {
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
 
     await connectMongoDB();
 
-    const allowedRoles = ["ADMINISTRADOR", "EMBAJADOR", "PORTERIA"];
+    const allowedRoles = ["ADMINISTRADOR", "LISTERO", "PORTERIA"];
     const rps = await User.find({ role: { $in: allowedRoles } })
       .select("_id")
       .lean();

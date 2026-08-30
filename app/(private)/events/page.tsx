@@ -13,7 +13,7 @@ export default async function EventsPage() {
     <EventsList
       user={{
         role: session.user.role,
-        isRPAdmin: session.user.role === "EMBAJADOR"
+        isRPAdmin: session.user.role === "LISTERO"
       }}
     />
   );

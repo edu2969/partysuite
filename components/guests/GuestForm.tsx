@@ -10,9 +10,10 @@ interface Guest {
   names: string;
   rut: string;
   baneado?: boolean;
-  gender?: "F" | "M" | null;
   observacion?: string;
-  global?: boolean;
+  vip?: boolean;
+  royalties: string;
+  global?: boolean;  
 }
 
 interface GuestFormProps {
@@ -28,10 +29,11 @@ export default function GuestForm({
   const [guest, setGuest] = useState<Guest | null>(null);
   const [names, setNames] = useState("");
   const [baneado, setBaneado] = useState(false);
-  const [gender, setGender] = useState<"F" | "M" | null>(null);
+  const [vip, setVip] = useState(false);
   const [observacion, setObservacion] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [royalties, setRoyalties] = useState("");
   const [error, setError] = useState("");
 
   const canEdit = role === "ADMINISTRADOR" || role === "NEO";
@@ -66,10 +68,12 @@ export default function GuestForm({
       setGuest(g);
       setNames(g.names || "");
       setBaneado(!!g.baneado);
-      setGender(g.gender || null);
       setObservacion(
         g.observacion || ""
       );
+      setRoyalties(
+        g.royalties || ""
+      )
     } catch (err) {
       console.error(err);
 
@@ -106,9 +110,10 @@ export default function GuestForm({
           },
           body: JSON.stringify({
             names,
-            gender,
             baneado,
             observacion,
+            vip,
+            royalties
           }),
         }
       );
@@ -218,6 +223,50 @@ export default function GuestForm({
             className="block w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-2.5 text-gray-400"
           />
         </div>
+
+        <div>
+          <label className="flex cursor-pointer items-center gap-3">
+            <input
+              id="checkbox-vip"
+              type="checkbox"
+              checked={vip}
+              onChange={(e) =>
+                setVip(
+                  e.target.checked
+                )
+              }
+              disabled={!canEdit}
+              className="h-6 w-6 rounded border-gray-600 bg-gray-700 text-purple-600 focus:ring-purple-500 disabled:opacity-50"
+            />
+
+            <span className="text-xl font-medium uppercase tracking-wide text-gray-400">
+              VIP
+            </span>
+          </label>
+        </div>
+
+        {vip && (<div>
+          <label
+            htmlFor="textarea-observacion"
+            className="mb-2 block text-xs font-medium uppercase tracking-wide text-gray-400"
+          >
+            Regalías
+          </label>
+
+          <textarea
+            id="textarea-royalties"
+            rows={4}
+            value={royalties}
+            onChange={(e) =>
+              setRoyalties(
+                e.target.value
+              )
+            }
+            className="block w-full resize-none rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none transition placeholder:text-gray-500 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
+          />
+        </div>)}
+
+        <hr/>
 
         <div>
           <label className="flex cursor-pointer items-center gap-3">

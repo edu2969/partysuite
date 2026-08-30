@@ -47,7 +47,7 @@ export default function LoginForm() {
           router.push("/events");
         } else if (userRole === "PORTERIA") {
           router.push("/welcome");
-        } else if (userRole === "EMBAJADOR") {
+        } else if (userRole === "LISTERO" || userRole === "LISTERO_PRO") {
           router.push("/events");
         } else {
           setError("Rol de usuario desconocido");

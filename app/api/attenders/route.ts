@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectMongoDB } from "@/lib/mongodb";
-import Event from "@/models/event";
 import { auth } from "@/app/utils/auth";
 import { parsePagination, queryAttenders } from "@/app/utils/attendersQuery";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ eventId: string }> }
-) {
+export async function GET(request: NextRequest) {
   try {
     const session = await auth();
 
@@ -29,21 +25,17 @@ export async function GET(
       );
     }
 
-    const { eventId } = await params;
     const { searchParams } = new URL(request.url);
     const q = searchParams.get("q") || "";
     const { page, pageSize } = parsePagination(searchParams);
 
     await connectMongoDB();
 
-    const [event, result] = await Promise.all([
-      Event.findById(eventId).lean(),
-      queryAttenders({ eventId, q, page, pageSize }),
-    ]);
+    const result = await queryAttenders({ q, page, pageSize });
 
-    return NextResponse.json({ event, ...result });
+    return NextResponse.json(result);
   } catch (error) {
-    console.error("GET /api/events/[eventId]/attenders:", error);
+    console.error("GET /api/attenders:", error);
 
     return NextResponse.json(
       { message: "Error al obtener asistentes" },

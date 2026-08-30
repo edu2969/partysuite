@@ -12,7 +12,7 @@ export default async function GuestFormPage({
   const session = await auth();
   const { guestId } = await params;
 
-  const userRole = session?.user?.role || "EMBAJADOR";
+  const userRole = session?.user?.role || "LISTERO";
 
   if (userRole !== "ADMINISTRADOR" && userRole !== "NEO") {
     return (

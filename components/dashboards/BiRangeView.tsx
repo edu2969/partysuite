@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import PieChart from "../prefabs/PieChart";
 import VerticalRankingBar from "../prefabs/VerticalRankingBar";
 import Loader from "../prefabs/Loader";
-import { RPData } from "../events/types";
+import { ListeroData } from "../events/types";
 import { FaChartColumn } from "react-icons/fa6";
 // Mismo helper que EventForm (formatDateInput), para que el <input type="date">
 // muestre/reciba YYYY-MM-DD en hora LOCAL, no UTC.
@@ -25,7 +25,7 @@ export default function BiRangeView() {
   const [desde, setDesde] = useState(() => formatDateInput(primerDiaDelMes()));
   const [hasta, setHasta] = useState(() => formatDateInput(new Date()));
 
-  const [rps, setRps] = useState<RPData[]>([]);
+  const [rps, setRps] = useState<ListeroData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<"torta" | "tabla" | "ranking">(
@@ -54,7 +54,7 @@ export default function BiRangeView() {
           throw new Error(result?.message || "No fue posible cargar el BI");
         }
 
-        const data: RPData[] = await response.json();
+        const data: ListeroData[] = await response.json();
 
         if (!cancelled) {
           setRps(data || []);

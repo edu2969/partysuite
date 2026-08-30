@@ -15,9 +15,11 @@ import {
     FaScrewdriverWrench,
     FaRightFromBracket,
     FaStar,
+    FaListCheck,
 } from "react-icons/fa6";
 import { BiSolidInvader } from "react-icons/bi";
-import { TbGhost2Filled } from "react-icons/tb";
+import { TbCameraSearch, TbGhost2Filled } from "react-icons/tb";
+import { MdBarcodeReader, MdOutlineSelfImprovement } from "react-icons/md";
 
 export default function TopNavigator() {
 
@@ -30,6 +32,8 @@ export default function TopNavigator() {
 
     const isAdmin = session?.user?.role === "ADMINISTRADOR";
     const isNeo = session?.user.role === "NEO";
+    const isGuardia = session?.user.role === "PORTERIA";
+    const isPro = session?.user.role === "LISTERO_PRO";
 
     return (
         <>
@@ -116,17 +120,36 @@ export default function TopNavigator() {
                                 {isNeo && (<div className="ml-1">
                                     <BiSolidInvader className="text-3xl text-green-400" />
                                 </div>)} 
+                                {isPro && (<div className="ml-1">
+                                    <div className="flex"> 
+                                        <MdOutlineSelfImprovement size={26} className="text-yellow-400" /><span className="text-xs text-yellow-400">PRO</span>
+                                    </div>
+                                </div>)} 
                             </span>                            
                         </div>
 
                         {/* Eventos */}
 
-                        <MenuItem
+                        {!isGuardia && (<MenuItem
                             href="/events"
                             icon={<FaCalendarDays size={26} />}
                             text="Eventos"
                             close={() => setMenuActivo(false)}
-                        />
+                        />)}
+                        
+                        {isGuardia && (<MenuItem
+                            href="/welcome"
+                            icon={<MdBarcodeReader size={26} />}
+                            text="Bienvenida 🐌"
+                            close={() => setMenuActivo(false)}
+                        />)}
+
+                        {isGuardia && (<MenuItem
+                            href="/welcome2"
+                            icon={<TbCameraSearch size={26} />}
+                            text="Bienvenida ⚡"
+                            close={() => setMenuActivo(false)}
+                        />)}     
 
                         {/* Administración */}
 
@@ -162,6 +185,17 @@ export default function TopNavigator() {
                                 href="/maintenance"
                                 icon={<FaScrewdriverWrench size={26} />}
                                 text="Mantención"
+                                close={() => setMenuActivo(false)}
+                            />
+
+                        )}
+
+                        {isAdmin && (
+
+                            <MenuItem
+                                href="/attenders"
+                                icon={<FaListCheck size={26} />}
+                                text="Invitados"
                                 close={() => setMenuActivo(false)}
                             />
 

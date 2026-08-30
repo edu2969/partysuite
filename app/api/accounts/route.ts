@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
     console.log("GET /api/accounts?deleted=", deleted);   
 
     await connectMongoDB();
-    const users = await User.find({ role: deleted ? 'ELIMINADO' : { $in: ["ADMINISTRADOR", "EMBAJADOR"] } });
+    const users = await User.find({ role: deleted ? 'ELIMINADO' : { $in: ["ADMINISTRADOR", "LISTERO", "LISTERO_PRO"] } });
 
     return NextResponse.json({ accounts: users });
 }
@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
         email,
         password,
         role,
+        maxAttendersByEvent
     } = await req.json();
 
     if (!name || !email || !password || !role) {
@@ -59,7 +60,8 @@ export async function POST(req: NextRequest) {
         name,
         email,
         password: passwordHash,
-        role
+        role,
+        maxAttendersByEvent
     });
 
     return NextResponse.json({

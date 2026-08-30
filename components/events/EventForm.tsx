@@ -6,8 +6,7 @@ import { useForm } from "react-hook-form";
 import { MdEditCalendar } from "react-icons/md";
 import PieChart from "../prefabs/PieChart";
 import VerticalRankingBar from "../prefabs/VerticalRankingBar";
-import { RPData } from "./types";
-import { FiLoader } from "react-icons/fi";
+import { ListeroData } from "./types";
 import Loader from "../prefabs/Loader";
 
 interface EventData {
@@ -69,7 +68,7 @@ export default function EventForm({ eventId }: EventEditProps) {
   const router = useRouter();
 
   const [event, setEvent] = useState<EventData | null>(null);
-  const [rps, setRps] = useState<RPData[]>([]);
+  const [rps, setRps] = useState<ListeroData[]>([]);
   const [loading, setLoading] = useState(!!eventId);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");

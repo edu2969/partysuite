@@ -3,12 +3,30 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { formatClock, formatHoraNocturna } from '@/lib/time'
 import type { EventInfo, Guest, ImportMessages } from '@/lib/types'
-import { GoAlertFill } from "react-icons/go";
 import { PiWarningOctagonFill } from "react-icons/pi";
 import { launchConfetti } from '@/app/utils/confeti'
 import { FaCheckCircle } from 'react-icons/fa';
 import { TbCameraSearch } from "react-icons/tb";
 import { useRouter } from 'next/navigation';
+
+type PopupKind = 'success' | 'error'
+interface PopupState {
+    kind: PopupKind
+    items: string[]
+}
+
+function buildPopup(data: ImportMessages): PopupState | null {
+    if (data.danger?.length) {
+        return { kind: 'error', items: data.danger.map((d) => d.item) }
+    }
+    if (data.warning?.length) {
+        return { kind: 'error', items: data.warning.map((w) => w.item) }
+    }
+    if (data.success?.length) {
+        return { kind: 'success', items: data.success.map((s) => s.item) }
+    }
+    return null
+}
 
 export default function Welcome() {
   const router = useRouter();
@@ -26,6 +44,8 @@ export default function Welcome() {
   // relecturas de estado obsoletas dentro del handler de keydown.
   const cadenaRef = useRef('')
   const rutInputRef = useRef<HTMLInputElement>(null)
+
+  const [popup, setPopup] = useState<PopupState | null>(null)
 
   // Equivalente al helper `noGender`
   const noGender = !guestToRegister ? true : !guestToRegister.gender ? false : true
@@ -70,7 +90,7 @@ export default function Welcome() {
     function handleWindowKeydown(e: KeyboardEvent) {
       if (e.key === "b") {
         document.getElementById('btn-ban')?.click()
-      }
+      }      
 
       // Si el foco no está en el input del RUT (por ejemplo, el operador
       // hizo clic en otro lugar, o algún elemento robó el foco), lo
@@ -141,7 +161,6 @@ export default function Welcome() {
 
         // Fuerza un nuevo montaje del mensaje
         setMessageKey((prev) => prev + 1);
-
         setMessages(data);
 
         if (data?.success?.length) {
@@ -151,6 +170,9 @@ export default function Welcome() {
             spread: 240,
           });
         }
+
+        const nextPopup = buildPopup(data)
+        setPopup(nextPopup)
 
         // 4 segundos: coincide exactamente con la animación
         clearMessageTimer.current = setTimeout(() => {
@@ -214,6 +236,11 @@ export default function Welcome() {
     router.push("/welcome2");
   }
 
+  const dismissPopup = useCallback(() => {
+      setPopup(null)
+      setBloqueado(false)
+  }, [])
+
   return (
     <div className="relative flex flex-col items-center justify-center h-screen w-full bg-black text-white">
       <div className="area absolute inset-0 z-0">
@@ -231,25 +258,32 @@ export default function Welcome() {
         </ul>
       </div>
 
-      <div className="relative flex items-center justify-center z-10 w-full h-screen">
-        <div>
-          {!actualEvent && <div className="flex flex-col items-center justify-center gap-4">
-            <img src="/logo.png" width={320} alt="Logo" />
-            <p className="text-3xl">Bienvenidos</p>
-          </div>}
+      <div className="relative flex items-center justify-center z-10 w-full h-screen px-4">
+        <div className="w-full">
+          {!actualEvent && (
+            <div className="flex flex-col items-center justify-center gap-4">
+              <img src="/ms-logo.png" width={320} alt="Logo" />
+              <p className="text-3xl">Bienvenidos</p>
+            </div>
+          )}
 
-          <div className={`${actualEvent ? 'grid grid-cols-2 text-3xl' : 'text-center'}`} style={{ marginTop: 8 }}>
-            <div className={`${actualEvent ? 'text-center' : 'text-right'}`}>
-              {actualEvent && <div className="flex justify-end gap-4">
-                <img src="/logo.png" width={180} alt="Logo" />
-              </div>}
-            </div>
-            <div className={actualEvent ? 'text-left' : 'text-center'}>
-              <h4>{actualEvent ? actualEvent.name : 'NO HAY EVENTO HOY'}</h4>
-              <p className="text-xl">Hora Actual</p>
-              <p id="time" className="font-bold text-6xl">{time}</p>
-              {actualEvent && <h4>Cierre de lista <b>{formatHoraNocturna(actualEvent.closeTime)}</b></h4>}
-            </div>
+          {/* Logo + info del evento: apilados y centrados, pensado
+                        primero para mobile. El logo baja de 180 a 110px, y
+                        los textos quedan debajo en vez de al lado. */}
+          <div className="flex flex-col items-center gap-1 text-center" style={{ marginTop: 8 }}>
+            {actualEvent && (
+              <img src="/ms-logo.png" width={110} alt="Logo" className="mb-1" />
+            )}
+            <h4 className="text-xl sm:text-2xl font-semibold">
+              {actualEvent ? actualEvent.name : 'NO HAY EVENTO HOY'}
+            </h4>
+            <p className="text-base sm:text-xl text-gray-300">Hora Actual</p>
+            <p id="time" className="font-bold text-5xl sm:text-6xl">{time}</p>
+            {actualEvent && (
+              <h4 className="text-base sm:text-xl mt-1">
+                Cierre de lista <b>{formatHoraNocturna(actualEvent.closeTime)}</b>
+              </h4>
+            )}
           </div>
 
           <div className={`${actualEvent ? 'w-full mt-4' : 'hidden'}`}>
@@ -287,57 +321,49 @@ export default function Welcome() {
           </div>
 
 
-          {Object.keys(messages).length > 0 && (
-            <div
-              key={messageKey}
-              className="fixed bottom-0 text-2xl pb-10 animate-fader-out-75"
-            >
-              <div className="list-errors" style={{ paddingTop: 20 }}>
-                {messages.danger && (
-                  <div className="alert alert-danger" role="alert">
-                    <div className="flex gap-4 text-red-300 text-lg">
-                      <PiWarningOctagonFill /><span className="-mt-1">¡Atención!</span>
-                    </div>
-                    {messages.danger?.map((danger, i) => (
-                      <div key={`danger_${i}`} className="flex text-red-200 text-2xl">
-                        <span className="ml-4 -mt-1">• {danger.item}</span>
+          {/* Popup de resultado del check-in: verde para éxito, rojo para
+                error/advertencia. Cubre toda la pantalla y un simple tap
+                (en cualquier parte) lo cierra y reanuda el escaneo. */}
+          {popup && (
+              <div
+                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6"
+                  role="alert"
+                  onClick={dismissPopup}
+              >
+                  <div
+                      className={`w-full max-w-sm rounded-2xl border-4 p-6 text-center shadow-2xl ${popup.kind === 'success'
+                              ? 'border-green-300 bg-green-600'
+                              : 'border-red-300 bg-red-600'
+                          }`}
+                  >
+                      <div className="flex flex-col items-center gap-2">
+                          {popup.kind === 'success' ? (
+                              <FaCheckCircle className="text-5xl text-green-50" />
+                          ) : (
+                              <PiWarningOctagonFill className="text-5xl text-red-50" />
+                          )}
+                          <p className="text-2xl font-bold text-white">
+                              {popup.kind === 'success' ? '¡Presente en la lista!' : '¡Atención!'}
+                          </p>
                       </div>
-                    ))}
+
+                      {popup.items.length > 0 && (
+                          <div className="mt-4 space-y-1 text-4xl text-white">
+                              {popup.items.map((item, i) => (
+                                  <p key={i}>{item}</p>
+                              ))}
+                          </div>
+                      )}
+
+                      <p className="mt-6 text-xl text-white/80">Toca para continuar</p>
                   </div>
-                )}
-                {messages.warning && (
-                  <div className="alert alert-warning" role="alert">
-                    <div className="flex gap-4 text-red-300 text-lg">
-                      <GoAlertFill /><span className="-mt-1">¡Atención!</span>
-                    </div>
-                    {messages.warning?.map((warning, i) => (
-                      <div key={`warning_${i}`}>
-                        <span className="glyphicon glyphicon-warning-sign" /> {warning.item}
-                        <br />
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {messages.success && (
-                  <div className="alert alert-success" role="alert">
-                    <div className="flex gap-4 text-green-300 text-lg">
-                      <FaCheckCircle /><span className="-mt-1">¡Presente en la lista!</span>
-                    </div>
-                    {messages.success?.map((success, i) => (
-                      <div key={`alert_${i}`}>
-                        <span className="glyphicon glyphicon-ok" /> {success.item}
-                        <br />
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
-            </div>)}
+          )}
 
         </div>
         <div className="absolute bottom-4 right-4">
           <button onClick={handleSwitchMethod}>
-            <TbCameraSearch size={52}/>
+            <TbCameraSearch size={52} />
           </button>
         </div>
       </div>

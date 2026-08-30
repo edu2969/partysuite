@@ -22,7 +22,7 @@ export async function GET(
 
     if (
       session.user.role !== "ADMINISTRADOR" &&
-      session.user.role !== "EMBAJADOR"
+      session.user.role !== "LISTERO"
     ) {
       return NextResponse.json(
         {
@@ -39,7 +39,7 @@ export async function GET(
 
     await connectMongoDB();
 
-    const allowedRoles = ["ADMINISTRADOR", "EMBAJADOR", "PORTERIA"];
+    const allowedRoles = ["ADMINISTRADOR", "LISTERO", "PORTERIA"];
     const rpIds = await User.find({ role: { $in: allowedRoles } })
       .select("_id")
       .lean();
@@ -121,7 +121,7 @@ export async function POST(
       );
     }
 
-    if (session.user.role !== "ADMINISTRADOR" && session.user.role !== "EMBAJADOR") {
+    if (session.user.role !== "ADMINISTRADOR" && session.user.role !== "LISTERO") {
       return NextResponse.json(
         {
           message:

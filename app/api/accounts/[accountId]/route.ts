@@ -51,6 +51,7 @@ export async function PUT(
   const name = body?.name;
   const email = body?.email;
   const role = body?.role;
+  const maxAttendersByEvent = body?.maxAttendersByEvent;
   const password: string | undefined = body?.password || undefined; // "" o undefined → no se toca
 
   console.log("Params", accountId, name, email, role, password);
@@ -74,6 +75,7 @@ export async function PUT(
     name: name.trim(),
     email: email.trim().toLowerCase(),
     role,
+    maxAttendersByEvent
   };
  
   if (password) {
@@ -146,7 +148,7 @@ export async function DELETE(
     const user = await User.findById(accountId);
     const deleted = user.role === "ELIMINADO";    
     await User.findByIdAndUpdate(accountId, { 
-      role: deleted ? "EMBAJADOR" : "ELIMINADO"
+      role: deleted ? { $in: ["LISTERO", "LISTERO_PRO"] } : "ELIMINADO"
     });
     return NextResponse.json({ success: true, deletedId: accountId });
   } catch (err: unknown) {

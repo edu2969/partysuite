@@ -1,4 +1,4 @@
-export interface RPData {
+export interface ListeroData {
   _id: string;
   asisten: number;
   createdAt: Date;

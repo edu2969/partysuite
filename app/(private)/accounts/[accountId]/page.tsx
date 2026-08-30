@@ -21,7 +21,7 @@ export default async function AccountFormPage({
   }
     return (
         <QueryProvider>
-            <AccountForm accountId={accountId} roleSelected={"EMBAJADOR"} />
+            <AccountForm accountId={accountId} roleSelected={"LISTERO"} />
         </QueryProvider>
     );
 }

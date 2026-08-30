@@ -6,7 +6,7 @@ declare module 'next-auth' {
     name: string;
     email: string;
     createdAt: Date;
-    role?: "ADMINISTRADOR" | "NEO" | "PORTERIA" | "EMBAJADOR" | "ELIMINADO";
+    role?: "ADMINISTRADOR" | "NEO" | "PORTERIA" | "LISTERO" | "LISTERO_PRO" | "ELIMINADO";
   }
 
   interface Session extends DefaultSession {
@@ -15,7 +15,7 @@ declare module 'next-auth' {
       name: string;
       email: string;
       createdAt: Date;
-      role?: "ADMINISTRADOR" | "NEO" | "PORTERIA" | "EMBAJADOR" | "ELIMINADO";
+      role?: "ADMINISTRADOR" | "NEO" | "PORTERIA" | "LISTERO" | "LISTERO_PRO" | "ELIMINADO";
     } & DefaultSession['user'];
   }
 }
@@ -26,6 +26,6 @@ declare module "next-auth/jwt" {
     name: string;
     email: string;
     createdAt: Date;
-    role?: "ADMINISTRADOR" | "NEO" | "PORTERIA" | "EMBAJADOR" | "ELIMINADO";
+    role?: "ADMINISTRADOR" | "NEO" | "PORTERIA" | "LISTERO" | "LISTERO_PRO" | "ELIMINADO";
   }
 }

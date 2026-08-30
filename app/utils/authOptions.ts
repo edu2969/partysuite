@@ -78,7 +78,7 @@ export const authConfig: NextAuthConfig = {
         session.user.name = token.name as string;
         session.user.email = token.email as string;
         session.user.createdAt = token.createdAt as Date;
-        session.user.role = token.role as "ADMINISTRADOR" | "NEO" | "PORTERIA" | "EMBAJADOR";
+        session.user.role = token.role as "ADMINISTRADOR" | "NEO" | "PORTERIA" | "LISTERO" | "LISTERO_PRO" | "ELIMINADO";
       }
       return session;
     }

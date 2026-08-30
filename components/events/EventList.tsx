@@ -262,7 +262,7 @@ export default function EventsList({
           <span className="text-cyan-400">
             <BiParty />
           </span>
-          Listado de Eventos!
+          Eventos
         </h1>
         {isRPAdmin && (
           <div className="text-2xl">
@@ -288,10 +288,10 @@ export default function EventsList({
       ) : (
         <div className="space-y-4">
 
-          {events.map((event) => (
+          {events.map((event, index) => (
             <div
               key={event._id}
-              className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 shadow-lg transition hover:border-slate-700"
+              className={`rounded-xl border border-slate-800 bg-slate-900/70 p-5 shadow-lg transition hover:border-slate-700 ${index > 0 ? 'opacity-40' : 'opacity-100'}`}
             >
 
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">

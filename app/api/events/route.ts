@@ -18,6 +18,7 @@ export async function GET() {
 
     const events = await Event.find({})
       .sort({ date: -1 })
+      .limit(10)
       .lean();
 
     return NextResponse.json(events);
