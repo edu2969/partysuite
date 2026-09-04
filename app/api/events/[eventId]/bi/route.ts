@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectMongoDB } from "@/lib/mongodb";
 import Event from "@/models/event";
 import Attender from "@/models/attender";
-import BIRP from "@/models/birp";
+import BILista from "@/models/biLista";
 import User from "@/models/user";
 import { auth } from "@/app/utils/auth";
 
@@ -39,12 +39,12 @@ export async function GET(
 
     await connectMongoDB();
 
-    const allowedRoles = ["ADMINISTRADOR", "LISTERO", "PORTERIA"];
-    const rpIds = await User.find({ role: { $in: allowedRoles } })
+    const allowedRoles = ["ADMINISTRADOR", "LISTERO", "LISTERO_PRO", "PORTERIA"];
+    const listeroIds = await User.find({ role: { $in: allowedRoles } })
       .select("_id")
       .lean();
 
-    const rpIdList = rpIds.map((user) => user._id);
+    const listerosIdList = listeroIds.map((user) => user._id);
 
     if (desdeParam || hastaParam) {
       const desde = desdeParam ? new Date(desdeParam) : new Date(0);
@@ -70,34 +70,32 @@ export async function GET(
 
       const eventoIds = eventos.map((evento) => evento._id);
 
-      const birps = await BIRP.find({
-        eventoId: { $in: eventoIds },
-        rpId: { $in: rpIdList },
+      const BIListas = await BILista.find({
+        eventId: { $in: eventoIds },
+        userId: { $in: listerosIdList },
         asisten: { $gt: 0 },
       })
-        .populate("rpId", "name email role")
+        .populate("userId", "name email role")
         .lean();
 
-      return NextResponse.json(birps);
+      return NextResponse.json(BIListas);
     }
 
     const query: Record<string, unknown> = {
       asisten: { $gt: 0 },
-      rpId: { $in: rpIdList },
+      userId: { $in: listerosIdList },
     };
 
     if (eventId && eventId !== "all") {
-      query.eventoId = eventId;
+      query.eventId = eventId;
     }
 
-    const birps = await BIRP.find(query)
-      .populate("rpId", "name email role")
+    const BIListas = await BILista.find(query)
+      .populate("userId", "name email role")
       .lean();
 
-    return NextResponse.json(birps);
+    return NextResponse.json(BIListas);
   } catch (error) {
-    console.error("GET /api/events/[eventId]/bi:", error);
-
     return NextResponse.json(
       {
         message: "Error al obtener los datos BI",
@@ -121,7 +119,9 @@ export async function POST(
       );
     }
 
-    if (session.user.role !== "ADMINISTRADOR" && session.user.role !== "LISTERO") {
+    if (session.user.role !== "ADMINISTRADOR" && session.user.role !== "LISTERO"
+      && session.user.role !== "LISTERO_PRO"
+    ) {
       return NextResponse.json(
         {
           message:
@@ -135,8 +135,7 @@ export async function POST(
 
     await connectMongoDB();
 
-    const event =
-      await Event.findById(eventId);
+    const event = await Event.findById(eventId);
 
     if (!event) {
       return NextResponse.json(
@@ -147,8 +146,8 @@ export async function POST(
       );
     }
 
-    await BIRP.deleteMany({
-      eventoId: eventId,
+    await BILista.deleteMany({
+      eventId: eventId,
     });
 
     const attenders =
@@ -168,11 +167,11 @@ export async function POST(
     let arrives = 0;
 
     for (const attender of attenders) {
-      const rpId =
-        attender.rpId.toString();
+      const userId =
+        attender.userId.toString();
 
       const current =
-        biMap.get(rpId) || {
+        biMap.get(userId) || {
           inscritos: 0,
           asisten: 0,
         };
@@ -185,18 +184,18 @@ export async function POST(
       }
 
       biMap.set(
-        rpId,
+        userId,
         current
       );
 
       total++;
     }
 
-    await BIRP.insertMany(
+    await BILista.insertMany(
       Array.from(biMap.entries()).map(
-        ([rpId, values]) => ({
-          eventoId: eventId,
-          rpId,
+        ([userId, values]) => ({
+          eventId: eventId,
+          userId,
           inscritos: values.inscritos,
           asisten: values.asisten,
         })
@@ -219,7 +218,7 @@ export async function POST(
       success: true,
       total,
       arrives,
-      rps: biMap.size,
+      listeros: biMap.size,
     });
   } catch (error) {
     console.error(

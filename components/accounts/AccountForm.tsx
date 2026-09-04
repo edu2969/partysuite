@@ -28,7 +28,6 @@ interface FormData {
     repassword: string;
     isPro: boolean;
     maxAttendersByEvent: number;
-    closeTime: number;
 }
 
 async function fetchAccount(accountId: string): Promise<Account> {
@@ -136,7 +135,7 @@ export default function AccountForm({
             password: "",
             repassword: "",
             isPro: account.role === "LISTERO_PRO",
-            maxAttendersByEvent: 0
+            maxAttendersByEvent: account.maxAttendersByEvent
         });
     }, [account, reset]);
 
@@ -266,21 +265,7 @@ export default function AccountForm({
                     </div>
                     
 
-                    <div className="grid md:grid-cols-4 gap-6">
-
-                        <div>
-                            <label className="block mb-2 text-cyan-300">
-                                Cierre de lista
-                            </label>
-
-                            <input
-                            {...register("closeTime", {
-                                required: true,
-                            })}
-                            type="time"
-                            className="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-500"
-                            />
-                        </div>
+                    <div className="grid grid-cols-2 md:grid-cols-2 gap-6">
 
                         <div>
                             <label className="block mb-2 text-cyan-300">
@@ -294,7 +279,7 @@ export default function AccountForm({
                         </div>
 
                         {(roleSelected === "LISTERO" || roleSelected === "LISTERO_PRO") && (
-                            <div className="col-span-2">
+                            <div>
                                 <div className="flex space-x-3 items-center">
                                     <input
                                         type="checkbox"

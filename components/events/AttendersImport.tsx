@@ -1,11 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface EventData {
   _id: string;
   name: string;
+  closeAt: string;
+  maxImport: number;
+  actualImported: number;
 }
 
 interface MessageItem {
@@ -28,35 +32,26 @@ export default function AttendersImport({
 }: AttendersImportProps) {
   const router = useRouter();
 
-  const [event, setEvent] = useState<EventData | null>(null);
   const [text, setText] = useState("");
-  const [messages, setMessages] =
-    useState<ImportMessages | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [messages, setMessages] = useState<ImportMessages | null>(null);
   const [importing, setImporting] = useState(false);
+  const queryClient = useQueryClient()
 
-  useEffect(() => {
-    const loadEvent = async () => {
-      try {
-        const response = await fetch(
-          `/api/events/${eventId}`
-        );
+  const { data: event, isLoading: isLoadingEvent } = useQuery<EventData>({
+    queryKey: ["event", eventId],
+    queryFn: async() => {
+      const response = await fetch(
+        `/api/events/${eventId}`
+      );
 
-        if (!response.ok) {
-          throw new Error("No fue posible cargar el evento");
-        }
-
-        const data = await response.json();
-        setEvent(data);
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
+      if (!response.ok) {
+        throw new Error("No fue posible cargar el evento");
       }
-    };
 
-    loadEvent();
-  }, [eventId]);
+      const data = await response.json();
+      return data.event;
+    }
+  })
 
   const handleImport = async () => {
     if (importing) return;
@@ -102,7 +97,6 @@ export default function AttendersImport({
       const data: ImportMessages = await response.json();
 
       if (!response.ok && !data.danger) {
-        console.log("DATA", entradas.join("/n"));
         setText(entradas.join("/n"));
         throw new Error(
           "No fue posible realizar la importación"
@@ -114,9 +108,8 @@ export default function AttendersImport({
       setText(data.wrongRuts || "");
     } catch (error) {
       console.error(error);
-      console.log("DATA", entradas.join("/n"));
       setText(entradas.join("/n"));
-        
+
       setMessages({
         danger: [
           {
@@ -129,6 +122,7 @@ export default function AttendersImport({
       });
     } finally {
       setImporting(false);
+      queryClient.invalidateQueries({ queryKey: ["event", eventId] });
     }
   };
 
@@ -147,7 +141,7 @@ export default function AttendersImport({
     router.back();
   }
 
-  if (loading) {
+  if (isLoadingEvent) {
     return (
       <main className="flex min-h-screen items-center justify-center">
         <span className="text-gray-400">
@@ -181,20 +175,19 @@ export default function AttendersImport({
     <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
 
       <div className="mb-6">
-        <h3 className="flex justify-end md:justify-start gap-2 text-3xl font-semibold text-white">
-          <span>↓</span>
+        <h3 className="flex justify-end ml-12 md:justify-start gap-2 text-xl md:text-3xl font-semibold text-white text-right">
           {event.name}
         </h3>
 
-        <h4 className="text-right mt-2 text-xl text-gray-300">
+        <h4 className="text-right mt-2 text-lg text-gray-300">
           Importación de Invitados
         </h4>
 
         <div className="flex flex-col mt-3 gap-2 rounded-md bg-yellow-500/10 px-3 py-2 text-2xl text-yellow-300">
-          <p className="text-xl">Pega acá una lista de invitados</p>
+          <p className="text-xl text-white">Pega acá una lista de invitados</p>
           <div className="flex">
-          <p className="mr-4 text-2xl">⚠</p>          
-          Formato: [Nombre(s) Apellido(s) Rut]
+            <p className="mr-4 text-4xl mt-3">⚠</p>
+            <p><small>Formato:</small> <br />[Nombre(s) Apellido(s) Rut]</p>
           </div>
         </div>
       </div>
@@ -212,6 +205,16 @@ Maria Gonzalez 15234567-8`}
           className="block w-full resize-none rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 font-mono text-md text-gray-100 shadow-sm outline-none transition placeholder:text-gray-600 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 disabled:opacity-50"
         />
       </div>
+
+      <div className="w-full h-4 overflow-hidden rounded-full bg-slate-200 shadow-inner">
+      <div
+          className="relative h-full overflow-hidden rounded-full bg-linear-to-r from-cyan-400 via-blue-500 to-purple-600 shadow-[0_0_14px_rgba(59,130,246,0.8)] transition-all duration-500 ease-out"
+          style={{ width: `${Math.floor(event.actualImported / event.maxImport * 100)}%` }}
+        >
+          <div className="absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/50 to-transparent" />    
+        </div>        
+      </div>
+      {event && <span><b>{Math.floor(event.actualImported / event.maxImport * 100)}%</b> <small>({event.actualImported} / {event.maxImport}</small></span>})
 
       {messages && (
         <div className="space-y-3 pt-2">
@@ -294,18 +297,18 @@ Maria Gonzalez 15234567-8`}
         </div>
       )}
 
-      <div className="flex mt-6 space-x-4 text-2xl justify-end">
+      <div className="flex mt-6 space-x-4 text-lg md:text-2xl justify-end">
         <button
-                onClick={handleBack}
-                className="rounded-lg bg-neutral-600 px-6 py-3 font-semibold text-white transition hover:bg-neutral-500 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                ← Volver
-              </button>
+          onClick={handleBack}
+          className="w-2/5 rounded-lg bg-neutral-600 px-6 py-3 font-semibold text-white transition hover:bg-neutral-500 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          ← Volver
+        </button>
         <button
           type="button"
           onClick={handleImport}
-          disabled={importing}
-          className="flex w-60 items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-3 font-semibold text-white shadow-sm transition hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/50 disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={importing || event.maxImport <= 0}
+          className="w-3/5 flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-3 font-semibold text-white shadow-sm transition hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/50 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {importing ? (
             <>
@@ -322,6 +325,6 @@ Maria Gonzalez 15234567-8`}
       </div>
 
     </div>
-    </main>
+  </main>
   );
 }

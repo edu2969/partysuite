@@ -1,3 +1,4 @@
+import QueryProvider from "@/app/providers/QueryProvider";
 import AttendersImport from "@/components/events/AttendersImport"
 
 export default async function EventGuestImport({
@@ -5,7 +6,8 @@ export default async function EventGuestImport({
 }: {
   params: Promise<{ eventId: string }>;
 }) {    
-  return (
-    <AttendersImport eventId={(await params).eventId} />
+  return (<QueryProvider>
+      <AttendersImport eventId={(await params).eventId} />
+    </QueryProvider>
   );
 }

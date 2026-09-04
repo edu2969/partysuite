@@ -16,10 +16,14 @@ const GuestSchema = new Schema(
       trim: true,
     },
 
-    gender: {
-      type: String,
-      enum: ["F", "M"],
-      required: false,
+    vip: {
+      type: Boolean,
+      default: false,
+      index: true
+    },
+
+    royalties: {
+      type: String
     },
 
     baneado: {

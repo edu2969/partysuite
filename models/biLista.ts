@@ -1,15 +1,15 @@
-import mongoose, { Schema, models, model } from "mongoose";
+import { Schema, models, model } from "mongoose";
 
-const BIRPSchema = new Schema(
+const BIListaSchema = new Schema(
   {
-    eventoId: {
+    eventId: {
       type: Schema.Types.ObjectId,
       ref: "Event",
       required: true,
       index: true,
     },
 
-    rpId: {
+    userId: {
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
@@ -31,19 +31,18 @@ const BIRPSchema = new Schema(
     },
   },
   {
-    timestamps: true,
-    collection: "birps",
+    timestamps: true
   }
 );
 
-BIRPSchema.index(
+BIListaSchema.index(
   {
-    eventoId: 1,
-    rpId: 1,
+    eventId: 1,
+    userId: 1,
   },
   {
     unique: true,
   }
 );
 
-export default models.BIRP || model("BIRP", BIRPSchema);
+export default models.BILista || model("BILista", BIListaSchema);

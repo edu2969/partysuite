@@ -1,13 +1,14 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { formatClock, formatHoraNocturna } from '@/lib/time'
+import { formatClock } from '@/lib/time'
 import type { EventInfo, Guest, ImportMessages } from '@/lib/types'
 import { PiWarningOctagonFill } from "react-icons/pi";
 import { launchConfetti } from '@/app/utils/confeti'
 import { FaCheckCircle } from 'react-icons/fa';
 import { TbCameraSearch } from "react-icons/tb";
 import { useRouter } from 'next/navigation';
+import moment from 'moment';
 
 type PopupKind = 'success' | 'error'
 interface PopupState {
@@ -66,7 +67,6 @@ export default function Welcome() {
       try {
         const res = await fetch('/api/events/current')
         const data = await res.json()
-        console.log("EVENTO ACTUAL", data);
         if (!cancelled) setActualEvent(data.event)
       } catch (err) {
         console.error('Error al cargar el evento actual', err)
@@ -122,7 +122,6 @@ export default function Welcome() {
     for (let i = 0; i < cadena.length; i++) {
       if (mascara.indexOf(cadena[i]) !== -1) legible += cadena[i]
     }
-    console.log("LEGIBLE", legible);
     if (cadena.length < 7) return false
 
     if (cadena.substring(0, 4) === 'HTTP') {
@@ -153,8 +152,6 @@ export default function Welcome() {
         });
 
         const data = await res.json();
-
-        console.log("DATA", data);
 
         setRutValue('');
         setGuestToRegister(false);
@@ -281,7 +278,7 @@ export default function Welcome() {
             <p id="time" className="font-bold text-5xl sm:text-6xl">{time}</p>
             {actualEvent && (
               <h4 className="text-base sm:text-xl mt-1">
-                Cierre de lista <b>{formatHoraNocturna(actualEvent.closeTime)}</b>
+                Cierre de lista <b>{moment(actualEvent.closedAt).format("HH:mm")}</b>
               </h4>
             )}
           </div>

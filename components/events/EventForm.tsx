@@ -8,67 +8,33 @@ import PieChart from "../prefabs/PieChart";
 import VerticalRankingBar from "../prefabs/VerticalRankingBar";
 import { ListeroData } from "./types";
 import Loader from "../prefabs/Loader";
+import moment from "moment";
 
 interface EventData {
   _id?: string;
   name: string;
   date: string;
-  closeTime: number;
+  closedAt: string;
   total: number;
   arrives: number;
   averageCheckTime: number;
-  male?: number;
-  female?: number;
 }
 
 interface EventForm {
   name: string;
   date: string;
-  closeTime: string;
+  closedAt: string;
 }
 
 interface EventEditProps {
   eventId?: string;
 }
 
-function formatDateInput(date: string | Date) {
-  const d = new Date(date);
-
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
-}
-
-function formatCloseTime(ms: number) {
-  const totalMinutes = Math.floor(ms / 60000);
-
-  let hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-
-  hours = hours % 24;
-
-  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(
-    2,
-    "0"
-  )}`;
-}
-
-function timeToMilliseconds(time: string) {
-  const [hours, minutes] = time.split(":").map(Number);
-
-  return (
-    hours * 60 * 60 * 1000 +
-    minutes * 60 * 1000
-  );
-}
-
 export default function EventForm({ eventId }: EventEditProps) {
   const router = useRouter();
 
   const [event, setEvent] = useState<EventData | null>(null);
-  const [rps, setRps] = useState<ListeroData[]>([]);
+  const [listeros, setListeros] = useState<ListeroData[]>([]);
   const [loading, setLoading] = useState(!!eventId);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -81,8 +47,8 @@ export default function EventForm({ eventId }: EventEditProps) {
   } = useForm<EventForm>({
     defaultValues: {
       name: "",
-      date: formatDateInput(new Date()),
-      closeTime: "01:30",
+      date: moment().startOf("day").format("YYYY-MM-DDTHH:mm"),
+      closedAt: moment().startOf("day").add(1, "day").add(1.5, "hour").format("YYYY-MM-DDTHH:mm"),
     },
   });
 
@@ -100,20 +66,21 @@ export default function EventForm({ eventId }: EventEditProps) {
 
           const data = await response.json();
 
-          setEvent(data);
+          console.log("Event data:", data);
+          const event = data.event;
+          setEvent(event);
 
           reset({
-            name: data.name,
-            date: formatDateInput(data.date),
-            closeTime: formatCloseTime(data.closeTime),
+            name: event.name,
+            date: moment(event.date).format("YYYY-MM-DDTHH:mm"),
+            closedAt: moment(event.closedAt).format("YYYY-MM-DDTHH:mm")
           });
         }
 
         const biResponse = await fetch(`/api/events/${eventId}/bi`);
         if (biResponse.ok) {
           const biData = await biResponse.json();
-          console.log("BiResponse", biData);
-          setRps(biData || []);
+          setListeros(biData || []);
         }
       } catch (err) {
         console.error(err);
@@ -133,8 +100,8 @@ export default function EventForm({ eventId }: EventEditProps) {
     try {
       const payload = {
         name: data.name.trim(),
-        date: new Date(`${data.date}T00:00:00`).toISOString(),
-        closeTime: timeToMilliseconds(data.closeTime),
+        date: moment(data.date).toISOString(),
+        closedAt: moment(data.closedAt).toISOString()
       };
 
       const response = await fetch(
@@ -183,7 +150,7 @@ export default function EventForm({ eventId }: EventEditProps) {
 
   return (
     <main className="w-full h-screen overflow-y-scroll">
-      <div className="mx-auto max-w-6xl p-6">
+      <div className="mx-auto max-w-6xl p-2 md:p-6">
         <div className="flex justify-end md:justify-start mb-8 space-x-3 text-cyan-400">
           <MdEditCalendar size={36} />
           <h1 className="text-3xl font-bold">
@@ -198,7 +165,7 @@ export default function EventForm({ eventId }: EventEditProps) {
           className="space-y-8"
         >
 
-          <section className="rounded-xl border border-slate-800 bg-slate-900/70 p-6">
+          <section className="rounded-xl border border-slate-800 bg-slate-900/70 p-2 md:p-6">
 
             <h2 className="mb-6 text-xl font-semibold text-white">
               Datos básicos
@@ -230,7 +197,8 @@ export default function EventForm({ eventId }: EventEditProps) {
                   {...register("date", {
                     required: true,
                   })}
-                  type="date"
+                  type="datetime-local"
+                  step={60}
                   disabled={saving}
                   className="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-500"
                 />
@@ -242,11 +210,12 @@ export default function EventForm({ eventId }: EventEditProps) {
                 </label>
 
                 <input
-                  {...register("closeTime", {
+                  {...register("closedAt", {
                     required: true,
                   })}
-                  type="time"
+                  type="datetime-local"
                   disabled={saving}
+                  step={60}
                   className="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-500"
                 />
               </div>
@@ -259,7 +228,7 @@ export default function EventForm({ eventId }: EventEditProps) {
               </div>
             )}
 
-            <div className="mt-6 flex justify-end space-x-4 text-2xl">
+            <div className="mt-6 flex justify-end space-x-4 text-lg md:text-2xl">
               <button
                 onClick={handleBack}
                 className="rounded-lg bg-neutral-600 px-6 py-3 font-semibold text-white transition hover:bg-neutral-500 disabled:cursor-not-allowed disabled:opacity-50"
@@ -339,7 +308,7 @@ export default function EventForm({ eventId }: EventEditProps) {
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
 
             {activeTab === 'torta' && (<div className="flex min-h-100 items-center justify-center rounded-lg bg-slate-950/50">
-              <PieChart rps={rps} />
+              <PieChart listeros={listeros} />
             </div>)}
 
             {activeTab === 'tabla' && (<div className="overflow-x-auto min-h-100">
@@ -357,13 +326,13 @@ export default function EventForm({ eventId }: EventEditProps) {
 
                 <tbody>
 
-                  {rps.map((biReg, index) => (
+                  {listeros.map((biReg, index) => (
                     <tr
                       key={biReg._id}
                       className="border-b border-slate-800 text-gray-300"
                     >
                       <td className="px-3 py-3">
-                        {index + 1}. {biReg.rpId.name}
+                        {index + 1}. {biReg.userId.name}
                       </td>
 
                       <td className="px-3 py-3">
@@ -380,7 +349,7 @@ export default function EventForm({ eventId }: EventEditProps) {
                     </tr>
                   ))}
 
-                  {rps.length === 0 && (
+                  {listeros.length === 0 && (
                     <tr>
                       <td
                         colSpan={4}
@@ -395,9 +364,9 @@ export default function EventForm({ eventId }: EventEditProps) {
             </div>)}
 
             {activeTab === 'ranking' && (<div className="flex min-h-100 items-center justify-center rounded-lg bg-slate-950/50">
-              <VerticalRankingBar totals={rps.map((rp) => {
+              <VerticalRankingBar totals={listeros.map((rp) => {
                 return {
-                  name: rp.rpId.name,
+                  name: rp.userId.name,
                   total: rp.asisten
                 }
               }).sort((a, b) => b.total - a.total) } />

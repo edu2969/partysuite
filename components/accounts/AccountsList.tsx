@@ -46,10 +46,8 @@ export default function AccountsList() {
     async function loadAccounts(deleted: boolean) {
         setLoading(true);
         const res = await fetch(`/api/accounts${deleted ? '?deleted=true' : ''}`);
-        console.log("res", res);
         if (res.ok) {
             const resp = await res.json();
-            console.log("ACCOUNTS", resp);
             setAccounts(resp.accounts);
         }
         setLoading(false);

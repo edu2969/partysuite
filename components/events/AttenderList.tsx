@@ -164,11 +164,9 @@ export default function AttenderList({
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting) {
-          loadMore();
-        }
+        if (entries[0].isIntersecting) loadMore();
       },
-      { root, rootMargin: "200px" }
+      { rootMargin: "200px" } // sin `root`: usa el viewport
     );
 
     observer.observe(sentinel);

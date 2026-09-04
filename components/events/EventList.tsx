@@ -5,8 +5,6 @@ import { useRouter } from "next/navigation";
 import { BiParty } from "react-icons/bi";
 import Link from "next/link";
 import { FaPlus } from "react-icons/fa6";
-import DeleteAccountModal from "../modals/DeleteAccountModal";
-import { finished } from "stream";
 
 interface EventData {
   _id: string;
@@ -14,7 +12,7 @@ interface EventData {
   date: string;
   total: number;
   arrives: number;
-  closeTime: number;
+  closedAt: string;
 }
 
 interface SessionUser {
@@ -45,10 +43,12 @@ export default function EventsList({
   const [error, setError] = useState("");
   const [deleting, setDeleting] = useState<string | null>(null);
   const [generatingBI, setGeneratingBI] = useState<string | null>(null);
-  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);  
+  const [canImport, setCanImport] = useState(false);
 
-  const isRPAdmin = user.role === "ADMINISTRADOR";
+  const isAdmin = user.role === "ADMINISTRADOR";
   const isNeo = user.role === "NEO";
+  const isPro = user.role === "LISTERO_PRO";
 
   useEffect(() => {
     loadEvents();
@@ -73,8 +73,8 @@ export default function EventsList({
       }
 
       const data = await response.json();
-      console.log("DATA", data);
-      setEvents(data || []);
+      setEvents(data.events || []); 
+      setCanImport(data.canImport);
     } catch (error) {
       console.error(error);
 
@@ -183,16 +183,6 @@ export default function EventsList({
     }
   }
 
-  const isFinished = (fechaCierre: Date, ms: number): boolean => {
-      const cierre = new Date(fechaCierre);
-
-      cierre.setHours(0, 0, 0, 0);
-      cierre.setDate(cierre.getDate() + 1);
-      cierre.setTime(cierre.getTime() + ms);
-
-      return new Date() >= cierre;
-  };
-
   const handleDelete = async (
     eventId: string,
     eventName: string
@@ -264,7 +254,7 @@ export default function EventsList({
           </span>
           Eventos
         </h1>
-        {isRPAdmin && (
+        {isAdmin && (
           <div className="text-2xl">
             <div className="rounded-md bg-cyan-600 text-white hover:bg-cyan-500">
               <Link className="flex gap-2 px-5 py-2 items-center" href="/events/new"><FaPlus /> Nuevo evento</Link>
@@ -305,6 +295,8 @@ export default function EventsList({
                   <span className="text-lg font-normal text-gray-400">
                       Asisten <span className="text-cyan-400">{event.arrives || 0}</span> de {event.total || 0}</span>
 
+                  <p className="text-md font-normal text-gray-400">Cierre de lista: <b>{isPro ? "1:30 am" : isAdmin ? "♾️" : "12:30 am"}</b></p>
+
                   <span className="block text-2xl text-gray-200">
                     {formatDate(event.date)}
                   </span>
@@ -336,7 +328,7 @@ export default function EventsList({
                     </button>
                   )}
 
-                  {(isRPAdmin || isNeo) && <button
+                  {(isAdmin || isNeo) && <button
                     type="button"
                     onClick={() =>
                       handleList(event._id)
@@ -346,27 +338,27 @@ export default function EventsList({
                     ☷ Lista
                   </button>}
 
-                  {(isRPAdmin || isNeo) && <button
+                  {(isAdmin || isNeo) && <button
                     type="button"
                     onClick={() =>
                       handleEdit(event._id)
                     }
                     className="rounded-lg bg-blue-600 px-3 py-2 font-medium text-white transition hover:bg-blue-500"
                   >
-                    ◉ Ver
+                    👀 Ver
                   </button>}
 
-                  {!isFinished(new Date(event.date), event.closeTime) && <button
+                  {(canImport && index == 0) && <button
                     type="button"
                     onClick={() =>
                       handleImport(event._id)
                     }
                     className="rounded-lg bg-blue-600 px-3 py-2 font-medium text-white transition hover:bg-blue-500"
                   >
-                    ↓ Importar
-                  </button>}
+                    📥 Importar
+                  </button>}                  
 
-                  {isRPAdmin && isFinished(new Date(event.date), event.closeTime) && (
+                  {isAdmin && new Date(event.closedAt) >= new Date(event.closedAt) && (
                     <button
                       type="button"
                       onClick={() =>
@@ -381,14 +373,16 @@ export default function EventsList({
                       }
                       className="rounded-lg bg-red-600 px-3 py-2 font-medium text-white transition hover:bg-red-500 disabled:opacity-50"
                     >
-                      {deleting ===
-                        event._id
+                      {deleting === event._id
                         ? "Eliminando..."
                         : "♲ Eliminar"}
                     </button>
                   )}
 
+                  
                 </div>
+
+                {(!canImport && index === 0) &&  <span className="text-red-700">📢 Ya no se puede importar más</span>}
 
               </div>
 

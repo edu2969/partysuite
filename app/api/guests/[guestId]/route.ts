@@ -14,7 +14,6 @@ export async function GET(
   context: RouteContext
 ) {
   try {
-    console.log("[GET] /api/guests GETTING Guest...")
     const session = await auth();
 
     if (!session?.user?.id) {

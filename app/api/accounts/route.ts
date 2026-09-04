@@ -5,7 +5,6 @@ import { connectMongoDB } from "@/lib/mongodb";
 import { auth } from "@/app/utils/auth";
 
 export async function GET(req: NextRequest) {
-    console.log("[GET] Accounts By params..");
     const session = await auth();
     if(!session || (session.user?.role !== "ADMINISTRADOR" 
         && session.user?.role !== "NEO")
@@ -13,8 +12,6 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ ok: false, error: "No session" });
     }
     const deleted = req.nextUrl.searchParams.get("deleted");
-
-    console.log("GET /api/accounts?deleted=", deleted);   
 
     await connectMongoDB();
     const users = await User.find({ role: deleted ? 'ELIMINADO' : { $in: ["ADMINISTRADOR", "LISTERO", "LISTERO_PRO"] } });

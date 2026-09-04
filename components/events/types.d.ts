@@ -2,9 +2,9 @@ export interface ListeroData {
   _id: string;
   asisten: number;
   createdAt: Date;
-  eventoId: string;
+  eventId: string;
   inscritos: number;
-  rpId: {
+  userId: {
     _id: string;
     email: string;
     role: string;

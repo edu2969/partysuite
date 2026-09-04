@@ -177,19 +177,6 @@ export default function TopNavigator() {
 
                         )}
 
-                        {/* Mantención */}
-
-                        {isNeo && (
-
-                            <MenuItem
-                                href="/maintenance"
-                                icon={<FaScrewdriverWrench size={26} />}
-                                text="Mantención"
-                                close={() => setMenuActivo(false)}
-                            />
-
-                        )}
-
                         {isAdmin && (
 
                             <MenuItem

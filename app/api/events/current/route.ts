@@ -38,7 +38,16 @@ export async function GET() {
     date: { $gte: inicioDelDia },
   })
     .sort({ date: 1 })
-    .lean()
+    .lean<{ date: Date, closedAt: Date }>()
 
-  return NextResponse.json({ event: eventSelected ?? null })
+  if(!eventSelected) {
+    return NextResponse.json({ ok: true, event: null }, { status: 200 })
+  }
+
+  const cierre = moment(eventSelected.date).add(1, "day").hour(5).minute(0);
+  if(cierre.isBefore(moment())) {
+    return NextResponse.json({ ok: true, event: null }, { status: 200 })
+  }
+
+  return NextResponse.json({ ok: true, event: eventSelected }, { status: 200 })
 }

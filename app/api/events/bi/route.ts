@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectMongoDB } from "@/lib/mongodb";
 import Event from "@/models/event";
-import BIRP from "@/models/birp";
+import BILista from "@/models/biLista";
 import User from "@/models/user";
 import { auth } from "@/app/utils/auth";
 
@@ -54,11 +54,11 @@ export async function GET(request: NextRequest) {
 
     await connectMongoDB();
 
-    const allowedRoles = ["ADMINISTRADOR", "LISTERO", "PORTERIA"];
-    const rps = await User.find({ role: { $in: allowedRoles } })
+    const allowedRoles = ["ADMINISTRADOR", "LISTERO", "LISTERO_PRO", "PORTERIA"];
+    const listeros = await User.find({ role: { $in: allowedRoles } })
       .select("_id")
       .lean();
-    const rpIdList = rps.map((user) => user._id);
+    const rpIdList = listeros.map((user) => user._id);
 
     const eventos = await Event.find({
       date: { $gte: desde, $lte: hasta },
@@ -72,26 +72,26 @@ export async function GET(request: NextRequest) {
       return NextResponse.json([]);
     }
 
-    // Cada BIRP está atado a UN evento (eventoId), así que para un rango de
+    // Cada BILista está atado a UN evento (eventoId), así que para un rango de
     // varios eventos hay que sumar por RP a través de todos ellos — no
-    // alcanza con traer los BIRP tal cual, como hace la rama desde/hasta
+    // alcanza con traer los BILista tal cual, como hace la rama desde/hasta
     // del route de un solo evento, porque ahí el mismo RP aparecería una
     // fila por cada evento en el que participó.
-    const agregados = await BIRP.aggregate([
+    const agregados = await BILista.aggregate([
       {
         $match: {
-          eventoId: { $in: eventoIds },
-          rpId: { $in: rpIdList },
+          eventId: { $in: eventoIds },
+          userId: { $in: rpIdList },
         },
       },
       {
         $group: {
-          _id: "$rpId",
+          _id: "$listero",
           inscritos: { $sum: "$inscritos" },
           asisten: { $sum: "$asisten" },
         },
       },
-      // El filtro "solo RPs con asistencia" se aplica DESPUÉS de sumar, no
+      // El filtro "solo listeros con asistencia" se aplica DESPUÉS de sumar, no
       // antes: un RP con asisten=0 en un evento pero >0 en otro del mismo
       // rango debe seguir apareciendo.
       { $match: { asisten: { $gt: 0 } } },
@@ -100,18 +100,18 @@ export async function GET(request: NextRequest) {
           from: User.collection.name,
           localField: "_id",
           foreignField: "_id",
-          as: "rp",
+          as: "listero",
         },
       },
-      { $unwind: "$rp" },
+      { $unwind: "$listero" },
       {
         $project: {
-          _id: "$rp._id",
-          rpId: {
-            _id: "$rp._id",
-            name: "$rp.name",
-            email: "$rp.email",
-            role: "$rp.role",
+          _id: "$listero._id",
+          userId: {
+            _id: "$listero._id",
+            name: "$listero.name",
+            email: "$listero.email",
+            role: "$listero.role",
           },
           inscritos: 1,
           asisten: 1,

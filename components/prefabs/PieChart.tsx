@@ -1,13 +1,12 @@
 import { ListeroData } from "../events/types";
 
 export default function PieChart({
-  rps,
+  listeros,
 }: {
-  rps: ListeroData[];
+  listeros: ListeroData[];
 }) {
-  console.log("RPs", rps)
-  const total = rps.reduce(
-    (sum, rp) => sum + (rp.asisten || 0),
+  const total = listeros.reduce(
+    (sum, listero) => sum + (listero.asisten || 0),
     0
   );
 
@@ -37,11 +36,11 @@ export default function PieChart({
     "#0ff",
   ];
 
-  const gradient = rps
-    .filter((rp) => rp.asisten > 0)
-    .map((rp, index) => {
+  const gradient = listeros
+    .filter((listero) => listero.asisten > 0)
+    .map((listero, index) => {
       const start = accumulated;
-      const percentage = (rp.asisten / total) * 100;
+      const percentage = (listero.asisten / total) * 100;
       accumulated += percentage;
 
       return `${colors[index % colors.length]} ${start}% ${accumulated}%`;
@@ -59,11 +58,11 @@ export default function PieChart({
       />
 
       <div className="flex flex-wrap justify-center gap-3">
-        {rps
-          .filter((rp) => rp.asisten > 0)
-          .map((rp, index) => (
+        {listeros
+          .filter((listero) => listero.asisten > 0)
+          .map((listero, index) => (
             <div
-              key={rp._id}
+              key={listero._id}
               className="flex items-center gap-2 text-xs text-gray-300"
             >
               <span
@@ -74,7 +73,7 @@ export default function PieChart({
                 }}
               />
 
-              {rp.rpId.name} ({rp.asisten})
+              {listero.userId.name} ({listero.asisten})
             </div>
           ))}
       </div>

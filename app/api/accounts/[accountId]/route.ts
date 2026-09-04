@@ -28,8 +28,6 @@ export async function PUT(
   // el que realmente decide qué se puede escribir en la base de datos.
   const session = await auth();
 
-  console.log("----> byId --->[accountId]/");
- 
   if (!session?.user) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
@@ -54,8 +52,6 @@ export async function PUT(
   const maxAttendersByEvent = body?.maxAttendersByEvent;
   const password: string | undefined = body?.password || undefined; // "" o undefined → no se toca
 
-  console.log("Params", accountId, name, email, role, password);
- 
   if (typeof name !== "string" || !name.trim()) {
     return NextResponse.json({ error: "'name' es requerido" }, { status: 400 });
   }
@@ -93,7 +89,6 @@ export async function PUT(
     if (!updated) {
       return NextResponse.json({ error: "Cuenta no encontrada" }, { status: 404 });
     }
-    console.log("TODO BIEN!!!!")
     return NextResponse.json(updated);
   } catch (err: unknown) {
     // índice único de email (o username) violado
@@ -114,8 +109,6 @@ export async function DELETE(
   // Mismo check que el PUT — se repite acá porque el route es
   // el que realmente decide qué se puede borrar en la base de datos.
   const session = await auth();
-
-  console.log("----> byId DELETE --->[accountId]/");
 
   if (!session?.user) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
@@ -139,8 +132,6 @@ export async function DELETE(
       { status: 400 }
     );
   }
-
-  console.log("Params", accountId);
 
   await connectMongoDB();
 

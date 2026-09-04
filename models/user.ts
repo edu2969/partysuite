@@ -18,23 +18,9 @@ const userSchema = new Schema(
       type: String,
       default: null,
     },
-    clientId: {
-      type: Schema.Types.ObjectId,
-      ref: "Client",
-      default: null
-    },
-    rut: {
-      type: String,
-    },
-    gender: {
-      type: String,
-    },
-    birthDate: {
-      type: Date,
-      default: null,
-    },
-    avatarImg: {
-      type: String,
+    maxAttendersByEvent: {
+      type: Number,
+      default: 500
     }
   },
   { timestamps: true }

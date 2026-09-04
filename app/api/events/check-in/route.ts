@@ -6,7 +6,7 @@ import Event from "@/models/event";
 import Guest from "@/models/guest";
 import Attender from "@/models/attender";
 import User from "@/models/user";
-import BIRP from "@/models/birp";
+import BILista from "@/models/biLista";
 import { auth } from "@/app/utils/auth";
 
 interface RegisterArrivalRequest {
@@ -91,11 +91,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Si la hora de cierre (evento.closeTime, offset desde las 12:00 de
-    // evento.date) ya pasó, se corta acá antes de tocar invitados/asistencia.
-    // Ej: son las 1:14 y closeTime da 1:30 → todavía NO ha cerrado, sigue
-    // de largo. Mismo cálculo que ya usaba processListImport, ahora
-    // centralizado en lib/eventDay.ts para que ambos lados usen la misma regla.
+    // Si la hora de cierre ya pasó, se corta acá antes de tocar invitados/asistencia.
     if (listaCerrada(evnt)) {
       return NextResponse.json({
         danger: [
@@ -243,10 +239,10 @@ export async function POST(request: NextRequest) {
       eventUpdate
     );
 
-    await BIRP.updateOne(
+    await BILista.updateOne(
       {
-        eventoId: evnt._id,
-        rpId: attender.rpId,
+        eventId: evnt._id,
+        userId: attender.rpId,
       },
       {
         $inc: {

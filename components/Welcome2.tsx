@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { formatClock, formatHoraNocturna } from '@/lib/time'
+import { formatClock } from '@/lib/time'
 import type { EventInfo, Guest, ImportMessages } from '@/lib/types'
 import { PiWarningOctagonFill } from "react-icons/pi";
 import { launchConfetti } from '@/app/utils/confeti'
@@ -94,7 +94,6 @@ export default function Welcome2() {
             try {
                 const res = await fetch('/api/events/current')
                 const data = await res.json()
-                console.log("EVENTO ACTUAL", data);
                 if (!cancelled) setActualEvent(data.event)
             } catch (err) {
                 console.error('Error al cargar el evento actual', err)
@@ -131,7 +130,6 @@ export default function Welcome2() {
         for (let i = 0; i < cadena.length; i++) {
             if (mascara.indexOf(cadena[i]) !== -1) legible += cadena[i]
         }
-        console.log("LEGIBLE", legible);
         if (cadena.length < 7) return false
 
         if (cadena.substring(0, 4) === 'HTTP') {
@@ -157,8 +155,6 @@ export default function Welcome2() {
                 });
 
                 const data = (await res.json()) as ImportMessages;
-
-                console.log("DATA", data);
 
                 setRutValue('');
                 setGuestToRegister(false);
@@ -186,7 +182,6 @@ export default function Welcome2() {
                 }
 
             } catch (err) {
-                console.log("ERRO!!!!")
                 play('/sounds/error.mp3')
                 console.error('Error al registrar ingreso', err);
 
@@ -402,7 +397,7 @@ export default function Welcome2() {
                         <p id="time" className="font-bold text-5xl sm:text-6xl">{time}</p>
                         {actualEvent && (
                             <h4 className="text-base sm:text-xl mt-1">
-                                Cierre de lista <b>{formatHoraNocturna(actualEvent.closeTime)}</b>
+                                Cierre de lista <b>{new Date(actualEvent.closedAt).toTimeString()}</b>
                             </h4>
                         )}
                     </div>

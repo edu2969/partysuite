@@ -54,7 +54,6 @@ export default function LoginForm() {
         }
       }
     } catch (error) {
-      console.log(error);
       setError("Ocurrió un error al iniciar sesión");
     } finally {
       setLoading(false);

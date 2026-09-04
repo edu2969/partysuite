@@ -2,11 +2,6 @@ import { Schema, models, model } from "mongoose";
 
 const EventSchema = new Schema(
   {
-    created: {
-      type: Date,
-      default: Date.now,
-    },
-
     userId: {
       type: Schema.Types.ObjectId,
       ref: "User",
@@ -26,10 +21,9 @@ const EventSchema = new Schema(
       index: true,
     },
 
-    closeTime: {
-      type: Number,
-      required: true,
-      default: 13.5 * 60 * 60 * 1000,
+    closedAt: {
+      type: Date,
+      required: true
     },
 
     total: {

@@ -25,7 +25,7 @@ export default function BiRangeView() {
   const [desde, setDesde] = useState(() => formatDateInput(primerDiaDelMes()));
   const [hasta, setHasta] = useState(() => formatDateInput(new Date()));
 
-  const [rps, setRps] = useState<ListeroData[]>([]);
+  const [listeros, setListeros] = useState<ListeroData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<"torta" | "tabla" | "ranking">(
@@ -57,7 +57,7 @@ export default function BiRangeView() {
         const data: ListeroData[] = await response.json();
 
         if (!cancelled) {
-          setRps(data || []);
+          setListeros(data || []);
         }
       } catch (err) {
         console.error(err);
@@ -65,7 +65,7 @@ export default function BiRangeView() {
           setError(
             err instanceof Error ? err.message : "No fue posible cargar el BI"
           );
-          setRps([]);
+          setListeros([]);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -198,7 +198,7 @@ export default function BiRangeView() {
                   aria-labelledby="tab-torta"
                   className="flex min-h-100 items-center justify-center rounded-lg bg-slate-950/50"
                 >
-                  <PieChart rps={rps} />
+                  <PieChart listeros={listeros} />
                 </div>
               )}
 
@@ -220,13 +220,13 @@ export default function BiRangeView() {
                     </thead>
 
                     <tbody>
-                      {rps.map((biReg, index) => (
+                      {listeros.map((biReg, index) => (
                         <tr
-                          key={biReg.rpId._id}
+                          key={biReg.userId._id}
                           className="border-b border-slate-800 text-gray-300"
                         >
                           <td className="px-3 py-3">
-                            {index + 1}. {biReg.rpId.name}
+                            {index + 1}. {biReg.userId.name}
                           </td>
 
                           <td className="px-3 py-3">
@@ -249,7 +249,7 @@ export default function BiRangeView() {
                         </tr>
                       ))}
 
-                      {rps.length === 0 && (
+                      {listeros.length === 0 && (
                         <tr>
                           <td
                             colSpan={4}
@@ -272,9 +272,9 @@ export default function BiRangeView() {
                   className="flex min-h-100 items-center justify-center rounded-lg bg-slate-950/50"
                 >
                   <VerticalRankingBar
-                    totals={rps
+                    totals={listeros
                       .map((rp) => ({
-                        name: rp.rpId.name,
+                        name: rp.userId.name,
                         total: rp.asisten,
                       }))
                       .sort((a, b) => b.total - a.total)}

@@ -50,14 +50,14 @@ export async function queryAttenders({
   if (trimmedQ) {
     const regex = new RegExp(escapeRegex(trimmedQ), "i");
 
-    const [guestMatches, rpMatches] = await Promise.all([
+    const [guestMatches, userMatches] = await Promise.all([
       Guest.find({ names: regex }).select("_id").lean(),
       User.find({ name: regex }).select("_id").lean(),
     ]);
 
     baseQuery.$or = [
       { guestId: { $in: guestMatches.map((g) => g._id) } },
-      { rpId: { $in: rpMatches.map((u) => u._id) } },
+      { userId: { $in: userMatches.map((u) => u._id) } },
     ];
   }
 
@@ -68,7 +68,7 @@ export async function queryAttenders({
   const [attenders, totalItems] = await Promise.all([
     Attender.find(baseQuery)
       .populate("guestId", "names baneado royalties")
-      .populate("rpId", "name")
+      .populate("userId", "name")
       .populate("eventId", "name")
       .sort(sort)
       .skip((page - 1) * pageSize)
@@ -86,14 +86,14 @@ export async function queryAttenders({
       baneado?: boolean;
       royalties?: string;
     } | null;
-    const rp = attender.rpId as { _id?: string; name?: string } | null;
+    const user = attender.userId as { _id?: string; name?: string } | null;
     const event = attender.eventId as { _id?: string; name?: string } | null;
 
     return {
       _id: String(attender._id),
       guestId: String(guest?._id || ""),
       names: guest?.names || "",
-      rp: rp?.name || "",
+      user: user?.name || "",
       eventName: event?.name || "",
       baneado: Boolean(guest?.baneado),
       checktime: attender.checktime

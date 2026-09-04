@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 import Event from "@/models/event";
 import Attender from "@/models/attender";
 import Guest from "@/models/guest";
-import BIRP from "@/models/birp";
+import BILista from "@/models/biLista";
 
 export async function GET() {
     try {
@@ -24,12 +24,12 @@ export async function GET() {
 
         await connectMongoDB();
 
-        const [events, attenders, guests, birps] =
+        const [events, attenders, guests, BIListas] =
             await Promise.all([
                 Event.deleteMany({}),
                 Attender.deleteMany({}),
                 Guest.deleteMany({}),
-                BIRP.deleteMany({}),
+                BILista.deleteMany({}),
             ]);
 
         return NextResponse.json({
@@ -39,7 +39,7 @@ export async function GET() {
                 events: events.deletedCount,
                 attenders: attenders.deletedCount,
                 guests: guests.deletedCount,
-                birps: birps.deletedCount,
+                BIListas: BIListas.deletedCount,
             },
         });
 

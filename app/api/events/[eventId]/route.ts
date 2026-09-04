@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from "next/server";
 import Event from "@/models/event"
 import mongoose from "mongoose";
 import { isAccountRole } from "@/app/utils/isAccountRole";
+import User from "@/models/user";
+import Attender from "@/models/attender";
 
 export async function GET(
   request: NextRequest,
@@ -22,11 +24,23 @@ export async function GET(
     await connectMongoDB();
 
     const { eventId } = await params;
+    const userId = session.user.id;
+    const userData = await User.findById(userId).select("maxAttendersByEvent");
+    // Conteo de maximo de importados/actual
+    const maxImport = userData.maxAttendersByEvent;
+    const cantidadInscritos = await Attender.countDocuments({
+      userId,
+      eventId
+    });    
 
     const event = await Event.findById(eventId)
       .lean();
 
-    return NextResponse.json(event);
+    return NextResponse.json({ ok: true, event: {
+      ...event,
+      maxImport: userData.maxAttendersByEvent,
+      actualImported: cantidadInscritos
+    }}, { status: 200 });
   } catch (error) {
     console.error("GET /api/events:", error);
 
@@ -43,8 +57,6 @@ export async function PUT(
 ) {
   const session = await auth();
 
-  console.log("----> byId --->[eventId]/");
- 
   if (!session?.user) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
@@ -64,16 +76,18 @@ export async function PUT(
  
   const name = body?.name;
   const date = body?.date;
-  const closeTime = body?.closeTime;
+  const closedAt = body?.closedAt;
 
-  console.log("Params", eventId, name, date, closeTime);
- 
   if (typeof name !== "string" || !name.trim()) {
     return NextResponse.json({ error: "'name' es requerido" }, { status: 400 });
   }
  
   if (typeof date !== "string" || !date.trim()) {
     return NextResponse.json({ error: "'date' es requerido" }, { status: 400 });
+  }
+
+  if (typeof closedAt !== "string" || !closedAt.trim()) {
+    return NextResponse.json({ error: "'closedAt' es requerido" }, { status: 400 });
   }
  
   if (!isAccountRole(userRole)) {
@@ -84,7 +98,7 @@ export async function PUT(
   const update: Record<string, unknown> = {
     name: name.trim(),
     date: date.trim().toLowerCase(),
-    closeTime,
+    closedAt: closedAt.trim().toLowerCase()
   };
  
   try {
@@ -94,7 +108,7 @@ export async function PUT(
       { new: true, runValidators: true }
     );
     if (!updated) {
-      return NextResponse.json({ error: "Cuenta no encontrada" }, { status: 404 });
+      return NextResponse.json({ error: "Evento no actualizado" }, { status: 404 });
     }
     return NextResponse.json(updated);
   } catch (err: unknown) {

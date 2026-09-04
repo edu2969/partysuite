@@ -16,7 +16,7 @@ const AttenderSchema = new Schema(
       index: true,
     },
 
-    rpId: {
+    userId: {
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
@@ -32,27 +32,6 @@ const AttenderSchema = new Schema(
       type: Date,
       default: null,
       index: true,
-    },
-
-    qr: {
-      type: String,
-      default: null,
-    },
-
-    observations: {
-      type: String,
-      default: "",
-    },
-
-    validatedBy: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
-      default: null,
-    },
-
-    device: {
-      type: String,
-      default: "",
     },
   },
   {
