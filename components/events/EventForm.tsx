@@ -66,7 +66,6 @@ export default function EventForm({ eventId }: EventEditProps) {
 
           const data = await response.json();
 
-          console.log("Event data:", data);
           const event = data.event;
           setEvent(event);
 
@@ -80,6 +79,7 @@ export default function EventForm({ eventId }: EventEditProps) {
         const biResponse = await fetch(`/api/events/${eventId}/bi`);
         if (biResponse.ok) {
           const biData = await biResponse.json();
+          console.log("biData", biData);
           setListeros(biData || []);
         }
       } catch (err) {
@@ -340,7 +340,7 @@ export default function EventForm({ eventId }: EventEditProps) {
                       </td>
 
                       <td className="px-3 py-3 text-cyan-400">
-                        {(biReg.inscritos / biReg.asisten * 100).toFixed(1)}%
+                        {(biReg.asisten / biReg.inscritos * 100).toFixed(1)}%
                       </td>
 
                       <td className="px-3 py-3 text-cyan-400">

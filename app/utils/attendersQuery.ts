@@ -67,9 +67,8 @@ export async function queryAttenders({
 
   const [attenders, totalItems] = await Promise.all([
     Attender.find(baseQuery)
-      .populate("guestId", "names baneado royalties")
+      .populate("guestId", "names arrives inscriptions banned vip royalties")
       .populate("userId", "name")
-      .populate("eventId", "name")
       .sort(sort)
       .skip((page - 1) * pageSize)
       .limit(pageSize)
@@ -83,7 +82,10 @@ export async function queryAttenders({
     const guest = attender.guestId as {
       _id?: string;
       names?: string;
-      baneado?: boolean;
+      arrives?: number;
+      inscriptions?: number;
+      banned?: boolean;
+      vip: boolean;
       royalties?: string;
     } | null;
     const user = attender.userId as { _id?: string; name?: string } | null;
@@ -95,7 +97,10 @@ export async function queryAttenders({
       names: guest?.names || "",
       user: user?.name || "",
       eventName: event?.name || "",
-      baneado: Boolean(guest?.baneado),
+      banned: Boolean(guest?.banned),
+      arrives: guest?.arrives || 0,
+      inscriptions: guest?.inscriptions || 0,
+      vip: Boolean(guest?.vip),
       checktime: attender.checktime
         ? new Date(attender.checktime).toISOString()
         : undefined,

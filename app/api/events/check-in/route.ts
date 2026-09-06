@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     const body: RegisterArrivalRequest = await request.json();
 
     const rut = body.rut?.trim();
-    const baneado = body.dudosa === true;
+    const banned = body.dudosa === true;
 
     if (!rut) {
       return NextResponse.json(
@@ -131,22 +131,22 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    if (baneado) {
+    if (banned) {
       await Guest.updateOne(
         {
           _id: guest._id,
         },
         {
           $set: {
-            baneado: true,
+            banned: true,
           },
         }
       );
 
-      guest.baneado = true;
+      guest.banned = true;
     }
 
-    if (guest.baneado) {
+    if (guest.banned) {
       return NextResponse.json({
         warning: [
           {
@@ -168,9 +168,9 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const rp = await User.findById(attender.rpId).lean<{ name: string }>();
+    const listero = await User.findById(attender.userId).lean<{ name: string }>();
 
-    const nombreRP = rp?.name || "Sin RP";
+    const nombreRP = listero?.name || "Sin RP";
 
     const checktime = Date.now() - desde.getTime();
 
@@ -204,15 +204,18 @@ export async function POST(request: NextRequest) {
         ],
       });
     }
-
+    
     await Guest.updateOne(
       {
         _id: guest._id,
       },
       {
         $inc: {
-          asistencias: 1,
+          arrives: 1,          
         },
+        $set: {
+          ratio: (guest.arrives + 1) / guest.inscriptions
+        }
       }
     );
 
@@ -221,14 +224,14 @@ export async function POST(request: NextRequest) {
         arrives: number;
       };
       $set: {
-        averageCheckTime: number;
+        averageCheckTime: number;        
       };
     } = {
       $inc: {
         arrives: 1,
       },
       $set: {
-        averageCheckTime,
+        averageCheckTime        
       },
     };
 
@@ -242,7 +245,7 @@ export async function POST(request: NextRequest) {
     await BILista.updateOne(
       {
         eventId: evnt._id,
-        userId: attender.rpId,
+        userId: attender.userId,
       },
       {
         $inc: {

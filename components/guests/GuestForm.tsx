@@ -9,7 +9,7 @@ interface Guest {
   _id: string;
   names: string;
   rut: string;
-  baneado?: boolean;
+  banned?: boolean;
   observacion?: string;
   vip?: boolean;
   royalties: string;
@@ -28,7 +28,7 @@ export default function GuestForm({
   const router = useRouter();
   const [guest, setGuest] = useState<Guest | null>(null);
   const [names, setNames] = useState("");
-  const [baneado, setBaneado] = useState(false);
+  const [banned, setbanned] = useState(false);
   const [vip, setVip] = useState(false);
   const [observacion, setObservacion] = useState("");
   const [loading, setLoading] = useState(true);
@@ -67,7 +67,7 @@ export default function GuestForm({
 
       setGuest(g);
       setNames(g.names || "");
-      setBaneado(!!g.baneado);
+      setbanned(!!g.banned);
       setObservacion(
         g.observacion || ""
       );
@@ -110,7 +110,7 @@ export default function GuestForm({
           },
           body: JSON.stringify({
             names,
-            baneado,
+            banned,
             observacion,
             vip,
             royalties
@@ -271,11 +271,11 @@ export default function GuestForm({
         <div>
           <label className="flex cursor-pointer items-center gap-3">
             <input
-              id="checkbox-baneado"
+              id="checkbox-banned"
               type="checkbox"
-              checked={baneado}
+              checked={banned}
               onChange={(e) =>
-                setBaneado(
+                setbanned(
                   e.target.checked
                 )
               }
@@ -284,7 +284,7 @@ export default function GuestForm({
             />
 
             <span className="text-xl font-medium uppercase tracking-wide text-gray-400">
-              ¿Baneado?
+              ¿banned?
             </span>
           </label>
         </div>

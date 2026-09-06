@@ -26,29 +26,34 @@ const GuestSchema = new Schema(
       type: String
     },
 
-    baneado: {
+    banned: {
       type: Boolean,
       default: false,
       index: true,
     },
 
-    observacion: {
+    observation: {
       type: String,
       default: "",
       trim: true,
     },
 
-    asistencias: {
+    arrives: {
       type: Number,
       default: 0,
       min: 0,
     },
 
-    inscripciones: {
+    inscriptions: {
       type: Number,
       default: 0,
       min: 0,
     },
+
+    ratio: {
+      type: Number,
+      default: 0
+    }
   },
   {
     timestamps: true,

@@ -4,6 +4,7 @@ import Event from "@/models/event";
 import { auth } from "@/app/utils/auth";
 import User from "@/models/user";
 import BILista from "@/models/biLista"
+import moment from "moment";
 
 export async function GET() {
   try {
@@ -19,7 +20,6 @@ export async function GET() {
     await connectMongoDB();
     const userId = session.user.id;
     const userData = await User.findById(userId);
-    console.log("userData", userData);
     if(!userData) {
       return NextResponse.json({ ok: false, error: "No se encuentra al usuario" })
     }
@@ -38,10 +38,15 @@ export async function GET() {
       eventId: events[0]._id
     });
 
+    const primerEvento = events[0];
+    const horaLimite = moment(primerEvento.createdAt).add(29, 'hours'); // Cierre 5:00 am del día siguiente
+    const ahora = moment();
+    const canImport = (!biReg || (biReg.inscritos < userData.maxAttendersByEvent)) && ahora.isBefore(horaLimite);
+
     return NextResponse.json({
       ok: true,
       events: events,
-      canImport: !biReg || (biReg.inscritos < userData.maxAttendersByEvent)
+      canImport
     }, { status: 200 });
   } catch (error) {
     console.error("GET /api/events:", error);

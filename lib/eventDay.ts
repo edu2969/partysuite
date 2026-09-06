@@ -32,7 +32,7 @@ export function getEventDayStart(): Date {
 export function getEventDayRange(): { desde: Date; hasta: Date } {
   const dia = diaDelEvento()
   const desde = dia.clone().startOf('day').toDate()
-  const hasta = dia.clone().add(1, 'day').startOf('day').toDate()
+  const hasta = dia.clone().add(1, 'day').startOf('day').add(5, 'hour').toDate()
   return { desde, hasta }
 }
 

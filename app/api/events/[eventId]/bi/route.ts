@@ -21,8 +21,7 @@ export async function GET(
     }
 
     if (
-      session.user.role !== "ADMINISTRADOR" &&
-      session.user.role !== "LISTERO"
+      session.user.role !== "ADMINISTRADOR"
     ) {
       return NextResponse.json(
         {
@@ -39,7 +38,7 @@ export async function GET(
 
     await connectMongoDB();
 
-    const allowedRoles = ["ADMINISTRADOR", "LISTERO", "LISTERO_PRO", "PORTERIA"];
+    const allowedRoles = ["ADMINISTRADOR", "LISTERO", "LISTERO_PRO"];
     const listeroIds = await User.find({ role: { $in: allowedRoles } })
       .select("_id")
       .lean();
@@ -82,7 +81,6 @@ export async function GET(
     }
 
     const query: Record<string, unknown> = {
-      asisten: { $gt: 0 },
       userId: { $in: listerosIdList },
     };
 

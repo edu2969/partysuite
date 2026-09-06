@@ -101,7 +101,7 @@ export default function LoginForm() {
               <h1 className="text-4xl font-semibold tracking-tight text-gray-200">
                 PartySuite
                 <span className="ml-2 align-middle text-xs font-normal text-gray-400">
-                  v0.7
+                  v2.0
                 </span>
               </h1>
 

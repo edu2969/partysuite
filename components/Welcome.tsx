@@ -9,6 +9,7 @@ import { FaCheckCircle } from 'react-icons/fa';
 import { TbCameraSearch } from "react-icons/tb";
 import { useRouter } from 'next/navigation';
 import moment from 'moment';
+import { useSoundPlayer } from './context/SoundPlayerContext';
 
 type PopupKind = 'success' | 'error'
 interface PopupState {
@@ -40,6 +41,7 @@ export default function Welcome() {
   const [rutValue, setRutValue] = useState('')
   const [messageKey, setMessageKey] = useState(0);
   const clearMessageTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { play } = useSoundPlayer();
 
   // Equivalente a la variable de módulo `cadena` del original. Un ref evita
   // relecturas de estado obsoletas dentro del handler de keydown.
@@ -161,11 +163,14 @@ export default function Welcome() {
         setMessages(data);
 
         if (data?.success?.length) {
+          play('/sounds/accept.mp3')
           launchConfetti({
             count: 180,
             duration: 2600,
             spread: 240,
           });
+        } else {
+            play('/sounds/error.mp3')
         }
 
         const nextPopup = buildPopup(data)
@@ -177,6 +182,7 @@ export default function Welcome() {
         }, 4000);
 
       } catch (err) {
+        play('/sounds/error.mp3')
         console.error('Error al registrar ingreso', err);
 
         setMessageKey((prev) => prev + 1);
@@ -302,12 +308,12 @@ export default function Welcome() {
               <div className="boton-ban" style={{ display: 'inline-block', verticalAlign: 'top' }}>
                 <div
                   id="btn-ban"
-                  className={`${dudosa ? 'btn-danger border-red-700 bg-red-900' : 'btn-default border-blue-700 bg-blue-900'} border-2 w-24 rounded-xl p-4`}
+                  className={`${dudosa ? 'btn-danger border-orange-400' : 'btn-default border-blue-700 '} bg-blue-900 border-2 w-18 mt-5 rounded-xl p-4`}
                   onClick={toggleBan}
                 >
                   <img
-                    src={dudosa ? '/cara-dudosa.png' : '/cara-feliz.png'}
-                    height={66}
+                    src='/cara-feliz.png'
+                    height={52}
                     alt="Estado"
                     className="invert"
                   />

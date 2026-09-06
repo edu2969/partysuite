@@ -439,12 +439,12 @@ export default function Welcome2() {
                                 <div className="boton-ban shrink-0">
                                     <div
                                         id="btn-ban"
-                                        className={`flex h-20 w-20 items-center justify-center rounded-xl border-2 p-2 ${dudosa ? 'btn-danger border-red-700 bg-red-900' : 'btn-default border-blue-700 bg-blue-900'
-                                            }`}
+                                        className={`flex h-20 w-20 items-center justify-center rounded-xl border-2 p-2 ${dudosa ? 'btn-danger border-orange-400' : 'btn-default border-blue-700 '} bg-blue-900`
+                                            }
                                         onClick={toggleBan}
                                     >
                                         <img
-                                            src={dudosa ? '/cara-dudosa.png' : '/cara-feliz.png'}
+                                            src='/cara-feliz.png'
                                             height={50}
                                             alt="Estado"
                                             className="invert"

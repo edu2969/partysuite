@@ -1,5 +1,10 @@
+"use client"
+
+import SoundPlayerProvider from "@/components/context/SoundPlayerContext";
 import Welcome from "@/components/Welcome";
 
 export default function WelcomePage() {
-    return (<Welcome />);
+    return (<SoundPlayerProvider>
+        <Welcome />
+    </SoundPlayerProvider>);
 }

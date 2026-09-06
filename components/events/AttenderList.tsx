@@ -17,9 +17,13 @@ interface AttenderItem {
   _id: string;
   guestId: string;
   names: string;
-  rp: string;
+  user: string;
   eventName?: string;
-  baneado: boolean;
+  banned: boolean;
+  arrives: number;
+  inscriptions: number;
+  vip: boolean;
+  royalties?: string;
   checktime?: string;
 }
 
@@ -71,7 +75,6 @@ export default function AttenderList({
         : `/api/attenders?${params.toString()}`;
 
       const res = await fetch(url);
-
       if (!res.ok) return null;
 
       return res.json();
@@ -179,6 +182,25 @@ export default function AttenderList({
     router.back();
   };
 
+  const porcentajeAsistencia = (arrives: number, inscriptions: number) => {
+    if (inscriptions === 0) return "";
+    const porcentaje = (arrives / inscriptions) * 100;
+    return `(${porcentaje.toFixed(1)}%)`;
+  }
+
+  const colorarrives = (arrives: number, inscriptions: number) => {
+    if (inscriptions === 0) return "text-gray-400";
+    const porcentaje = (arrives / inscriptions) * 100;
+    if (porcentaje >= 75) return "text-green-400";
+    if (porcentaje >= 50) return "text-yellow-400";
+    return "text-red-400";
+  }
+  
+  const fondoVIP = (isVIP: boolean) => {
+    if (!isVIP) return "bg-slate-900";
+    return "bg-linear-to-r from-violet-600/50 to-indigo-600/50";
+  }
+
   return (
     <main ref={mainRef} className="w-full h-screen overflow-y-scroll">
       <div className="mx-auto max-w-5xl p-6 text-xl">
@@ -241,16 +263,19 @@ export default function AttenderList({
               {rows.map((g) => (
                 <div
                   key={g._id}
-                  className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900 p-5"
+                  className={`flex items-center justify-between rounded-xl border border-slate-800 p-5 ${fondoVIP(g.vip)}`}
                 >
                   <div>
 
-                    <h3 className="text-lg font-semibold text-white">
+                    <h3 className="text-xl font-semibold text-white">
                       {g.names}
                       <span className="ml-2 text-sm font-normal text-cyan-400">
-                        ({g.rp})
+                        {g.user}
                       </span>
                     </h3>
+                    <p className={`text-sm ${colorarrives(g.arrives, g.inscriptions)}`}>
+                      {g.arrives} arrives / {g.inscriptions} inscriptions {porcentajeAsistencia(g.arrives, g.inscriptions)}
+                    </p>
 
                     {!eventId && g.eventName && (
                       <div className="mt-1 text-xs text-gray-500">
@@ -258,9 +283,9 @@ export default function AttenderList({
                       </div>
                     )}
 
-                    {g.baneado && (
+                    {g.banned && (
                       <div className="mt-1 text-sm text-red-500">
-                        (Baneado)
+                        (banned)
                       </div>
                     )}
 

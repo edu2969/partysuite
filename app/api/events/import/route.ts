@@ -272,21 +272,21 @@ export async function POST(request: NextRequest) {
         guest = await Guest.create({
           rut: rutNoDv,
           names: nombrePartes.join(" "),
-          asistencias: 0,
-          inscripciones: 0,
+          arrives: 0,
+          inscriptions: 0,
         });
       }
 
       /*
        * ---------------------------------------------------------
-       * 5. Verificar si está baneado
+       * 5. Verificar si está banned
        * ---------------------------------------------------------
        */
 
-      if (guest.baneado) {
+      if (guest.banned) {
         addMessage(
           "danger",
-          `${guest.names} baneado ${
+          `${guest.names} banned ${
             guest.observacion
               ? guest.observacion
               : "(Sin razón descrita)"
@@ -362,7 +362,7 @@ export async function POST(request: NextRequest) {
         },
         {
           $inc: {
-            inscripciones: 1,
+            inscriptions: 1,
           },
         }
       );

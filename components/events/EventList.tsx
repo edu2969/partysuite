@@ -73,7 +73,7 @@ export default function EventsList({
       }
 
       const data = await response.json();
-      setEvents(data.events || []); 
+      setEvents(data.events || []);
       setCanImport(data.canImport);
     } catch (error) {
       console.error(error);
@@ -382,7 +382,7 @@ export default function EventsList({
                   
                 </div>
 
-                {(!canImport && index === 0) &&  <span className="text-red-700">📢 Ya no se puede importar más</span>}
+                {(!canImport && index === 0) &&  <span className="text-orange-400">📢 Ya no se puede importar más</span>}
 
               </div>
 

@@ -362,7 +362,7 @@ body {
 
     100% {
       opacity: 1;
-      transform: scale(1.5);
+      transform: scale(1.25);
     }
   }
 
@@ -596,53 +596,6 @@ body {
 	bottom: 0;
 	left: 0;
 	position: absolute;
-}
-
-/* DESCRIPTION (delete me if needed) */
-.description-container {
-	position: absolute;
-	top: 32px;
-	left: 32px;
-	text-align: left;
-	letter-spacing: 3px;
-}
-.description-container .title {
-	font-size: 19px;
-	font-weight: 500;
-	color: black;
-	text-transform: uppercase;
-}
-.description-container .subtitle {
-	margin-top: 6px;
-	font-size: 26px;
-	font-weight: 500;
-	color: black;
-	text-transform: uppercase;
-}
-
-.author-container {
-	position: absolute;
-	width: 50%;
-	right: 21px; /* $width / 2, con $width: 42px */
-	bottom: 21px;
-	text-align: right;
-}
-.author-container .picture {
-	position: absolute;
-	right: 0;
-	top: -42px; /* -$width */
-	margin-top: -12px;
-	width: 42px;
-	height: 42px;
-	background-size: 42px;
-	background-position: center;
-	background-repeat: no-repeat;
-	background-image: url(https://assets.codepen.io/595576/internal/avatars/users/default.png);
-}
-.author-container .title {
-	font-size: 16px;
-	letter-spacing: 2px;
-	color: black;
 }
 
 .rainbow-text {

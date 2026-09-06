@@ -26,8 +26,6 @@ export async function GET(
     const { eventId } = await params;
     const userId = session.user.id;
     const userData = await User.findById(userId).select("maxAttendersByEvent");
-    // Conteo de maximo de importados/actual
-    const maxImport = userData.maxAttendersByEvent;
     const cantidadInscritos = await Attender.countDocuments({
       userId,
       eventId

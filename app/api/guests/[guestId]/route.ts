@@ -86,9 +86,10 @@ export async function PUT(
 
     const {
       names,
-      gender,
-      baneado,
+      banned,
       observacion,
+      vip,
+      royalties
     } = body;
 
     await connectMongoDB();
@@ -99,14 +100,11 @@ export async function PUT(
         {
           $set: {
             names,
-            gender:
-              gender === "F" ||
-              gender === "M"
-                ? gender
-                : null,
-            baneado: !!baneado,
+            banned: !!banned,
             observacion:
               observacion || "",
+            vip: !!vip,
+            royalties: royalties || null
           },
         },
         {

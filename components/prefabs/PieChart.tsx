@@ -13,7 +13,7 @@ export default function PieChart({
   if (!total) {
     return (
       <span className="text-sm text-gray-500">
-        No existen asistencias para mostrar
+        No existen arrives para mostrar
       </span>
     );
   }
