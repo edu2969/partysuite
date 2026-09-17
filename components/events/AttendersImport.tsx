@@ -207,11 +207,9 @@ Maria Gonzalez 15234567-8`}
       </div>
 
       <div className="w-full h-4 overflow-hidden rounded-full bg-slate-200 shadow-inner">
-      <div
-          className="relative h-full overflow-hidden rounded-full bg-linear-to-r from-cyan-400 via-blue-500 to-purple-600 shadow-[0_0_14px_rgba(59,130,246,0.8)] transition-all duration-500 ease-out"
-          style={{ width: `${Math.floor(event.actualImported / event.maxImport * 100)}%` }}
-        >
-          <div className="absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/50 to-transparent" />    
+        <div className="relative h-full overflow-hidden rounded-full bg-linear-to-r from-cyan-400 via-blue-500 to-purple-600 shadow-[0_0_14px_rgba(59,130,246,0.8)] transition-all duration-500 ease-out"
+          style={{ width: `${Math.floor(event.actualImported / event.maxImport * 100)}%` }}>
+          <div className="absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/50 to-transparent" />
         </div>        
       </div>
       {event && <span><b>{Math.floor(event.actualImported / event.maxImport * 100)}%</b> <small>({event.actualImported} / {event.maxImport}</small></span>})

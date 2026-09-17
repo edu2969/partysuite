@@ -10,7 +10,7 @@ export const HORA_CORTE_MADRUGADA = 5
 
 interface EventoConHorario {
   date: Date
-  closeTime: number
+  closedAt: Date
 }
 
 function diaDelEvento() {
@@ -36,19 +36,6 @@ export function getEventDayRange(): { desde: Date; hasta: Date } {
   return { desde, hasta }
 }
 
-// Fecha/hora exacta de cierre de un evento. `closeTime` son los ms que se
-// suman a las 12:00 del `date` del evento — mismo cálculo que ya usaba
-// processListImport/import route. Para eventos que cruzan la medianoche,
-// closeTime va a ser mayor a 12h y el resultado cae correctamente al día
-// siguiente (ej: closeTime = 14h → cierre a las 2am del día después de
-// `date`).
-export function getFechaCierre(evento: EventoConHorario) {
-  const ms = evento.closeTime
-  const horas = Math.floor(ms / 3600000)
-  const minutos = Math.floor((ms - horas * 3600000) / 60000)
-  return moment(evento.date).add(1, "day").startOf("day").add(horas, 'h').add(minutos, 'm')
-}
-
 export function listaCerrada(evento: EventoConHorario): boolean {
-  return moment().isAfter(getFechaCierre(evento))
+  return moment().isAfter(evento.closedAt)
 }
