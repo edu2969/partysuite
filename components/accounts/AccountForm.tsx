@@ -292,7 +292,7 @@ export default function AccountForm({
                                                 PRO
                                             </p>
                                             <p className="text-cyan-800 text-md ml-2">
-                                                Puede importar hasta las <b>{isProCheck ? '01:00 am' : '12:30 am'}</b>
+                                                Puede importar hasta las <b>{isProCheck ? '12:30 am' : '11:00 am'}</b>
                                             </p>
                                         </div>
                                     </label>

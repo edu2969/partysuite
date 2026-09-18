@@ -49,6 +49,8 @@ export async function POST(request: NextRequest) {
     const body: ImportRequest = await request.json();
     const { entradas, eventId } = body;
 
+    console.log("EVENTID", eventId, userId);
+
     const userData = await User.findById(userId).lean<{
       role: string
       maxAttendersByEvent: number
@@ -103,6 +105,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(messages);
       }
       const countAttenders = await Attender.find({
+        userId: userId,
         eventId: eventId
       }).countDocuments();
       const maxImport = userData.maxAttendersByEvent - countAttenders;      
@@ -331,8 +334,6 @@ export async function POST(request: NextRequest) {
        * ---------------------------------------------------------
        */
 
-      const userId = session?.user.id;
-
       if (!userId) {
         addMessage(
           "danger",
@@ -375,6 +376,7 @@ export async function POST(request: NextRequest) {
      */
 
     if (totalImported > 0) {
+      console.log("ACTUALIZANDO LISTA", totalImported);
       await Event.updateOne(
         {
           _id: eventId,
@@ -385,8 +387,6 @@ export async function POST(request: NextRequest) {
           },
         }
       );
-
-      const userId = session?.user.id;
 
       const reg = await BILista.findOne({
         eventId: eventId,
