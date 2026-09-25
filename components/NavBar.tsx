@@ -30,8 +30,8 @@ export default function TopNavigator() {
     const router = useRouter();
     const pathname = usePathname();
 
-    const isAdmin = session?.user?.role === "ADMINISTRADOR";
     const isNeo = session?.user.role === "NEO";
+    const isAdmin = isNeo || session?.user?.role === "ADMINISTRADOR";
     const isGuardia = session?.user.role === "PORTERIA";
     const isPro = session?.user.role === "LISTERO_PRO";
 
@@ -114,7 +114,7 @@ export default function TopNavigator() {
 
                             <span className="flex text-xl font-medium text-cyan-200 text-center">
                                 {session?.user?.name || "Usuario"}
-                                {isAdmin && (<div className="ml-1">
+                                {isAdmin && !isNeo && (<div className="ml-1">
                                     <FaStar className="text-sm text-yellow-400" />
                                 </div>)}
                                 {isNeo && (<div className="ml-1">

@@ -172,19 +172,36 @@ export async function POST(request: NextRequest) {
 
     const nombreRP = listero?.name || "Sin RP";
 
-    const checktime = Date.now() - desde.getTime();
+    // checktime es una FECHA real (momento absoluto del check-in), no un
+    // offset desde el inicio del día. Antes se guardaba `Date.now()` y se
+    // trataba como si fuera un offset — con eso, horaNocturna calculaba
+    // horas:minutos a partir de un epoch completo en vez de una duración,
+    // dando resultados sin sentido. El fix real está en horaNocturna()
+    // (lib/time.ts), que ahora normaliza con `new Date(valor)` en vez de
+    // asumir un offset; el import y el nombre de la función no cambiaron.
+    const checktime = new Date();
+    const checktimeMs = checktime.getTime();
 
+    // El promedio SÍ se puede calcular directo sobre epoch-ms (a
+    // diferencia de promediar horas del reloj, que se rompe con el cruce
+    // de medianoche): el tiempo absoluto no da "vueltas", así que el
+    // promedio de timestamps es en sí mismo un timestamp válido y
+    // representativo. Se extrae `.getTime()` de ambos operandos para la
+    // aritmética y se vuelve a envolver en Date recién al guardar.
     const previousArrives = evnt.arrives || 0;
-    const previousAverage = evnt.averageCheckTime || 0;
+    const previousAverageMs = evnt.averageCheckTime
+      ? new Date(evnt.averageCheckTime).getTime()
+      : 0;
 
-    const averageCheckTime =
-      (checktime + previousArrives * previousAverage) /
+    const averageCheckTimeMs =
+      (checktimeMs + previousArrives * previousAverageMs) /
       (previousArrives + 1);
+
+    const averageCheckTime = new Date(averageCheckTimeMs);
 
     const attenderUpdate = await Attender.updateOne(
       {
-        _id: attender._id,
-        $or: [{ checktime: null }, { checktime: { $exists: false } }],
+        _id: attender._id
       },
       {
         $set: {
@@ -204,18 +221,18 @@ export async function POST(request: NextRequest) {
         ],
       });
     }
-    
+
     await Guest.updateOne(
       {
         _id: guest._id,
       },
       {
         $inc: {
-          arrives: 1,          
+          arrives: 1,
         },
         $set: {
-          ratio: (guest.arrives + 1) / guest.inscriptions
-        }
+          ratio: (guest.arrives + 1) / guest.inscriptions,
+        },
       }
     );
 
@@ -224,14 +241,14 @@ export async function POST(request: NextRequest) {
         arrives: number;
       };
       $set: {
-        averageCheckTime: number;        
+        averageCheckTime: Date;
       };
     } = {
       $inc: {
         arrives: 1,
       },
       $set: {
-        averageCheckTime        
+        averageCheckTime,
       },
     };
 

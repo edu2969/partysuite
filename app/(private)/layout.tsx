@@ -1,10 +1,8 @@
-import { Genos } from 'next/font/google'
 import type { Metadata, Viewport } from 'next'
 import '../globals.css'
 import AuthProviders from '@/app/providers/AuthProvider'
 import NavBar from '@/components/NavBar'
-
-const genos = Genos({ subsets: ['latin'] })
+import UpdatePasswordModal from '@/components/prefabs/UpdatePasswordModal'
 
 export const metadata: Metadata = {
   title: 'PartySuite',
@@ -24,6 +22,7 @@ export default async function RootLayout({
   children: React.ReactNode
 }) {
   return (<AuthProviders>
+          <UpdatePasswordModal />
           <NavBar />
           {children}
         </AuthProviders>)

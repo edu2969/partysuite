@@ -60,7 +60,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const session = await auth();
-  if (!session || session.user?.role !== "ADMINISTRADOR") {
+  if (!session || (session.user?.role !== "ADMINISTRADOR" && session.user?.role !== "NEO")) {
     return NextResponse.json({ ok: false, error: "No session" }, { status: 401 });
   }
   await connectMongoDB();

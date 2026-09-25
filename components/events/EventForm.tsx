@@ -206,7 +206,7 @@ export default function EventForm({ eventId }: EventEditProps) {
 
               <div>
                 <label className="mb-2 block text-sm font-medium text-gray-300">
-                  Cierre de lista
+                  Cierre de importaciones
                 </label>
 
                 <input
@@ -265,8 +265,8 @@ export default function EventForm({ eventId }: EventEditProps) {
                 aria-controls="panel-torta"
                 onClick={() => setActiveTab('torta')}
                 className={`border-b-2 px-2 pb-3 text-sm font-medium transition ${activeTab === 'torta'
-                    ? 'border-cyan-500 text-cyan-400'
-                    : 'border-transparent text-gray-400 hover:text-white'
+                  ? 'border-cyan-500 text-cyan-400'
+                  : 'border-transparent text-gray-400 hover:text-white'
                   }`}
               >
                 Torta
@@ -280,14 +280,14 @@ export default function EventForm({ eventId }: EventEditProps) {
                 aria-controls="panel-tabla"
                 onClick={() => setActiveTab('tabla')}
                 className={`border-b-2 px-2 pb-3 text-sm font-medium transition ${activeTab === 'tabla'
-                    ? 'border-cyan-500 text-cyan-400'
-                    : 'border-transparent text-gray-400 hover:text-white'
+                  ? 'border-cyan-500 text-cyan-400'
+                  : 'border-transparent text-gray-400 hover:text-white'
                   }`}
               >
                 Tabla
               </button>
 
-                            <button
+              <button
                 type="button"
                 role="tab"
                 id="tab-ranking"
@@ -295,8 +295,8 @@ export default function EventForm({ eventId }: EventEditProps) {
                 aria-controls="panel-ranking"
                 onClick={() => setActiveTab('ranking')}
                 className={`border-b-2 px-2 pb-3 text-sm font-medium transition ${activeTab === 'ranking'
-                    ? 'border-cyan-500 text-cyan-400'
-                    : 'border-transparent text-gray-400 hover:text-white'
+                  ? 'border-cyan-500 text-cyan-400'
+                  : 'border-transparent text-gray-400 hover:text-white'
                   }`}
               >
                 Ranking
@@ -340,7 +340,7 @@ export default function EventForm({ eventId }: EventEditProps) {
                       </td>
 
                       <td className="px-3 py-3 text-cyan-400">
-                        {(biReg.asisten / biReg.inscritos * 100).toFixed(1)}%
+                        {biReg.asisten == 0 ? 0 : (100 * biReg.asisten / biReg.inscritos).toFixed(1)}%
                       </td>
 
                       <td className="px-3 py-3 text-cyan-400">
@@ -369,7 +369,7 @@ export default function EventForm({ eventId }: EventEditProps) {
                   name: rp.userId.name,
                   total: rp.asisten
                 }
-              }).sort((a, b) => b.total - a.total) } />
+              }).sort((a, b) => b.total - a.total)} />
             </div>)}
 
           </div>

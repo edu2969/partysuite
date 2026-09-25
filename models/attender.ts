@@ -23,19 +23,13 @@ const AttenderSchema = new Schema(
       index: true,
     },
 
-    fecha: {
-      type: Date,
-      default: Date.now,
-    },
-
     checktime: {
       type: Date,
-      default: null,
-      index: true,
-    },
+      optional: true
+    }
   },
   {
-    timestamps: true,
+    timestamps: true, // Created es fecha de importación, Updated es fecha de checkin
   }
 );
 

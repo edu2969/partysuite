@@ -14,6 +14,10 @@ const userSchema = new Schema(
       type: String,
       required: true,
     },
+    changedAt: {
+      type: Date,
+      optional: true
+    },
     role: {
       type: String,
       default: null,

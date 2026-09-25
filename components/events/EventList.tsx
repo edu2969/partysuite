@@ -46,8 +46,8 @@ export default function EventsList({
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);  
   const [canImport, setCanImport] = useState(false);
 
-  const isAdmin = user.role === "ADMINISTRADOR";
   const isNeo = user.role === "NEO";
+  const isAdmin = isNeo || user.role === "ADMINISTRADOR";
   const isPro = user.role === "LISTERO_PRO";
 
   useEffect(() => {
@@ -303,30 +303,7 @@ export default function EventsList({
 
                 </div>
 
-                <div className="flex flex-wrap justify-end gap-2 text-2xl">
-
-                  {isNeo && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleBI(event._id)
-                      }
-                      disabled={
-                        generatingBI ===
-                        event._id
-                      }
-                      className="rounded-lg bg-blue-600 px-3 py-2 font-medium text-white transition hover:bg-blue-500 disabled:opacity-50"
-                    >
-                      {generatingBI ===
-                        event._id ? (
-                        "BI..."
-                      ) : (
-                        <>
-                          ⚙ BI
-                        </>
-                      )}
-                    </button>
-                  )}
+                <div className="flex flex-wrap justify-end gap-2 text-2xl">                  
 
                   {(isAdmin || isNeo) && <button
                     type="button"

@@ -16,10 +16,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (
-      session.user.role !== "ADMINISTRADOR" &&
-      session.user.role !== "LISTERO"
-    ) {
+    if (["ADMINISTRADOR", "LISTERO_PRO", "NEO"].includes(session.user.role ?? "") === false) {
       return NextResponse.json(
         {
           message: "No tiene permisos para consultar BI",

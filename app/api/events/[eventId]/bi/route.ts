@@ -21,7 +21,7 @@ export async function GET(
     }
 
     if (
-      session.user.role !== "ADMINISTRADOR"
+      session.user.role !== "ADMINISTRADOR" && session.user.role !== "NEO"
     ) {
       return NextResponse.json(
         {
@@ -176,7 +176,7 @@ export async function POST(
 
       current.inscritos++;
 
-      if (attender.checktime) {
+      if (attender.updatedAt > attender.createdAt) {
         current.asisten++;
         arrives++;
       }
