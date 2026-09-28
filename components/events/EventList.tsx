@@ -5,6 +5,11 @@ import { useRouter } from "next/navigation";
 import { BiParty } from "react-icons/bi";
 import Link from "next/link";
 import { FaPlus } from "react-icons/fa6";
+import moment from "moment";
+import {
+  getEventCountdownStart,
+  getEventProCloseAt,
+} from "@/lib/eventClose";
 
 interface EventData {
   _id: string;
@@ -13,6 +18,7 @@ interface EventData {
   total: number;
   arrives: number;
   closedAt: string;
+  isActive: boolean;
 }
 
 interface SessionUser {
@@ -31,6 +37,120 @@ function formatDate(date: string) {
     month: "short",
     year: "2-digit",
   }).format(new Date(date));
+}
+
+const EVENTS_REFRESH_INTERVAL = 10_000;
+
+function EventCountdown({
+  date,
+  closedAt,
+  isPro,
+}: {
+  date: string;
+  closedAt: string;
+  isPro: boolean;
+}) {
+  const [now, setNow] = useState<number | null>(null);
+  const startAt = getEventCountdownStart(date)?.getTime();
+  const endAt = isPro
+    ? getEventProCloseAt(date)?.getTime()
+    : new Date(closedAt).getTime();
+
+  useEffect(() => {
+    if (
+      startAt === undefined ||
+      endAt === undefined ||
+      !Number.isFinite(startAt) ||
+      !Number.isFinite(endAt) ||
+      endAt <= startAt
+    ) {
+      return;
+    }
+
+    let timeout: ReturnType<typeof setTimeout>;
+    let cancelled = false;
+
+    const tick = () => {
+      const timestamp = Date.now();
+      setNow(timestamp);
+
+      if (!cancelled && timestamp < endAt) {
+        const delay = timestamp < startAt
+          ? startAt - timestamp
+          : 1_000;
+        timeout = setTimeout(tick, Math.min(delay, 2_147_483_647));
+      }
+    };
+
+    const timestamp = Date.now();
+    if (timestamp < endAt) {
+      timeout = setTimeout(tick, timestamp < startAt
+        ? Math.min(startAt - timestamp, 2_147_483_647)
+        : 0);
+    }
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
+  }, [startAt, endAt]);
+
+  if (
+    now === null ||
+    startAt === undefined ||
+    endAt === undefined ||
+    !Number.isFinite(startAt) ||
+    !Number.isFinite(endAt) ||
+    now < startAt ||
+    now >= endAt
+  ) {
+    return null;
+  }
+
+  const duration = endAt - startAt;
+  const remaining = endAt - now;
+  const remainingRatio = Math.max(
+    0,
+    Math.min((endAt - Math.max(now, startAt)) / duration, 1)
+  );
+  const elapsedRatio = 1 - remainingRatio;
+  const urgency = elapsedRatio >= 0.9 ? "red" : elapsedRatio >= 0.1 ? "amber" : "green";
+  const colors = {
+    green: { text: "text-emerald-400", fill: "bg-emerald-500" },
+    amber: { text: "text-amber-300", fill: "bg-amber-400" },
+    red: { text: "text-red-400", fill: "bg-red-500" },
+  }[urgency];
+  const totalSeconds = Math.ceil(remaining / 1_000);
+  const hours = Math.floor(totalSeconds / 3_600);
+  const minutes = Math.floor((totalSeconds % 3_600) / 60);
+  const seconds = totalSeconds % 60;
+  const countdown = [hours, minutes, seconds]
+    .map((value) => String(value).padStart(2, "0"))
+    .join(":");
+
+  return (
+    <div className="absolute top-0 right-6  mt-2 max-w-sm" aria-label="Cuenta regresiva para el cierre de lista">
+      <div className="mb-1 flex items-center justify-between gap-3">
+        <span className={`text-sm font-medium ${colors.text}`}>Cierra en</span>
+        <time className={`font-mono text-lg font-semibold tabular-nums ${colors.text}`} role="timer" aria-live="off">
+          {countdown}
+        </time>
+      </div>
+      <div
+        className="h-2 overflow-hidden rounded-full bg-slate-700"
+        role="progressbar"
+        aria-label="Tiempo restante hasta el cierre de lista"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.ceil(remainingRatio * 100)}
+      >
+        <div
+          className={`h-full rounded-full transition-[width] duration-1000 ${colors.fill}`}
+          style={{ width: `${remainingRatio * 100}%` }}
+        />
+      </div>
+    </div>
+  );
 }
 
 export default function EventsList({
@@ -52,11 +172,28 @@ export default function EventsList({
 
   useEffect(() => {
     loadEvents();
+
+    let timeout: ReturnType<typeof setTimeout>;
+    let cancelled = false;
+
+    const refreshEvents = async () => {
+      await loadEvents(false);
+      if (!cancelled) {
+        timeout = setTimeout(refreshEvents, EVENTS_REFRESH_INTERVAL);
+      }
+    };
+
+    timeout = setTimeout(refreshEvents, EVENTS_REFRESH_INTERVAL);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
   }, []);
 
-  const loadEvents = async () => {
+  const loadEvents = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       setError("");
 
       const response = await fetch(
@@ -84,7 +221,7 @@ export default function EventsList({
           : "Error al obtener eventos"
       );
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
@@ -252,7 +389,7 @@ export default function EventsList({
           <span className="text-cyan-400">
             <BiParty />
           </span>
-          Eventos
+          <span className="text-3xl">Eventos</span> <span className="mt-2 text-lg">(últimos 5)</span>
         </h1>
         {isAdmin && (
           <div className="text-2xl">
@@ -281,29 +418,32 @@ export default function EventsList({
           {events.map((event, index) => (
             <div
               key={event._id}
-              className={`rounded-xl border border-slate-800 bg-slate-900/70 p-5 shadow-lg transition hover:border-slate-700 ${index > 0 ? 'opacity-40' : 'opacity-100'}`}
+              className={`relative rounded-xl border border-slate-800 bg-slate-900/70 p-5 shadow-lg transition hover:border-slate-700 ${index > 0 ? 'opacity-50' : 'opacity-100'}`}
             >
 
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 
-                <div className="min-w-0">
+                <div className="flex flex-col min-w-0">
 
-                  <h2 className="text-3xl font-semibold text-white">
+                  <h2 className="text-3xl font-semibold text-white -mt-2">
                     {event.name}                    
                   </h2>
-
-                  <span className="text-lg font-normal text-gray-400">
-                      Asisten <span className="text-cyan-400">{event.arrives || 0}</span> de {event.total || 0}</span>
-
-                  <p className="text-md font-normal text-gray-400">Cierre de lista: <b>{isPro ? "1:30 am" : isAdmin ? "♾️" : "12:30 am"}</b></p>
 
                   <span className="block text-2xl text-gray-200">
                     {formatDate(event.date)}
                   </span>
 
+                  <span className="text-lg font-normal text-gray-400">
+                      Asisten <span className="text-cyan-400">{event.arrives || 0}</span> de {event.total || 0}</span>
+
+                  <p className="text-md font-normal text-gray-400">Cierre de lista: <b>{isPro ? "12:30 am" : moment(event.closedAt).format("HH:mm")}</b></p>
+                  {index === 0 && (
+                    <EventCountdown date={event.date} closedAt={event.closedAt} isPro={isPro} />
+                  )}
+
                 </div>
 
-                <div className="flex flex-wrap justify-end gap-2 text-2xl">                  
+                <div className="flex flex-wrap justify-end items-end h-26 gap-2 text-2xl">                  
 
                   {(isAdmin || isNeo) && <button
                     type="button"
@@ -357,12 +497,9 @@ export default function EventsList({
                   )}
 
                   
-                </div>
-
-                {(!canImport && index === 0) &&  <span className="text-orange-400">📢 Ya no se puede importar más</span>}
-
+                </div>                
               </div>
-
+              {(!canImport && index === 0) &&  <div className="absolute right-6 bottom-3 text-orange-400">📢 Ya no se puede importar más</div>}              
             </div>
           ))}
 

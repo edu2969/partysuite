@@ -6,6 +6,10 @@ import mongoose from "mongoose";
 import { isAccountRole } from "@/app/utils/isAccountRole";
 import User from "@/models/user";
 import Attender from "@/models/attender";
+import {
+  EVENT_CLOSE_LIMIT_MESSAGE,
+  isEventCloseWithinDeadline,
+} from "@/lib/eventClose";
 
 export async function GET(
   request: NextRequest,
@@ -86,6 +90,13 @@ export async function PUT(
 
   if (typeof closedAt !== "string" || !closedAt.trim()) {
     return NextResponse.json({ error: "'closedAt' es requerido" }, { status: 400 });
+  }
+
+  if (!isEventCloseWithinDeadline(date, closedAt)) {
+    return NextResponse.json(
+      { message: EVENT_CLOSE_LIMIT_MESSAGE },
+      { status: 400 }
+    );
   }
  
   if (!isAccountRole(userRole)) {

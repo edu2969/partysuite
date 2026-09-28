@@ -72,7 +72,8 @@ export default function AccountsList() {
   const queryClient = useQueryClient();
   const { data: session } = useSession();
 
-  const isAdmin = session?.user?.role === "ADMINISTRADOR";
+  const isNeo = session?.user?.role === "NEO";
+  const isAdmin = isNeo || session?.user?.role === "ADMINISTRADOR";
 
   const [showDeleted, setShowDeleted] = useState(false);
   const [text, setText] = useState("");

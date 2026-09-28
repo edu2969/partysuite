@@ -8,6 +8,7 @@ import { launchConfetti } from '@/app/utils/confeti'
 import { FaCheckCircle } from 'react-icons/fa';
 import jsQR from 'jsqr'
 import { useSoundPlayer } from "./context/SoundPlayerContext";
+import moment from 'moment';
 
 // La API BarcodeDetector todavía no está en los tipos estándar del DOM en
 // muchas versiones de TypeScript, así que se declara mínimamente acá.
@@ -397,7 +398,7 @@ export default function Welcome2() {
                         <p id="time" className="font-bold text-5xl sm:text-6xl">{time}</p>
                         {actualEvent && (
                             <h4 className="text-base sm:text-xl mt-1">
-                                Cierre de lista <b>{new Date(actualEvent.closedAt).toTimeString()}</b>
+                                Cierre de lista <b>{moment(actualEvent.closedAt).format("HH:mm")}</b>
                             </h4>
                         )}
                     </div>

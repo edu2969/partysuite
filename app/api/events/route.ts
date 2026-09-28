@@ -5,6 +5,10 @@ import { auth } from "@/app/utils/auth";
 import User from "@/models/user";
 import BILista from "@/models/biLista"
 import moment from "moment";
+import {
+  EVENT_CLOSE_LIMIT_MESSAGE,
+  isEventCloseWithinDeadline,
+} from "@/lib/eventClose";
 
 export async function GET() {
   try {
@@ -39,13 +43,16 @@ export async function GET() {
     });
 
     const primerEvento = events[0];
-    const horaLimite = moment(primerEvento.createdAt).add(29, 'hours'); // Cierre 5:00 am del día siguiente
     const ahora = moment();
-    const canImport = (!biReg || (biReg.inscritos < userData.maxAttendersByEvent)) && ahora.isBefore(horaLimite);
+    const canImport = (!biReg || (biReg.inscritos < userData.maxAttendersByEvent)) && ahora.isBefore(primerEvento.closedAt);
 
     return NextResponse.json({
       ok: true,
-      events: events,
+      events: events.map(event => ({
+        ...event,
+        canImport: ahora.isBefore(event.closedAt) && (!biReg || (biReg.inscritos < userData.maxAttendersByEvent)),
+        isActive: ahora.isBefore(event.closedAt) && ahora.isAfter(event.date)
+      })),
       canImport
     }, { status: 200 });
   } catch (error) {
@@ -77,6 +84,13 @@ export async function POST(req: NextRequest) {
         ok: false,
         message: "Datos incompletos",
       },
+      { status: 400 }
+    );
+  }
+
+  if (!isEventCloseWithinDeadline(date, closedAt)) {
+    return NextResponse.json(
+      { ok: false, message: EVENT_CLOSE_LIMIT_MESSAGE },
       { status: 400 }
     );
   }

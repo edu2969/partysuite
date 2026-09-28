@@ -9,6 +9,11 @@ import VerticalRankingBar from "../prefabs/VerticalRankingBar";
 import { ListeroData } from "./types";
 import Loader from "../prefabs/Loader";
 import moment from "moment";
+import {
+  EVENT_CLOSE_LIMIT_MESSAGE,
+  getEventCloseDeadline,
+  isEventCloseWithinDeadline,
+} from "@/lib/eventClose";
 
 interface EventData {
   _id?: string;
@@ -44,6 +49,9 @@ export default function EventForm({ eventId }: EventEditProps) {
     register,
     handleSubmit,
     reset,
+    setError: setFieldError,
+    watch,
+    formState: { errors },
   } = useForm<EventForm>({
     defaultValues: {
       name: "",
@@ -51,6 +59,10 @@ export default function EventForm({ eventId }: EventEditProps) {
       closedAt: moment().startOf("day").add(1, "day").add(1.5, "hour").format("YYYY-MM-DDTHH:mm"),
     },
   });
+  const selectedDate = watch("date");
+  const maxClosedAt = selectedDate
+    ? getEventCloseDeadline(new Date(selectedDate))
+    : null;
 
   useEffect(() => {
     const load = async () => {
@@ -94,6 +106,14 @@ export default function EventForm({ eventId }: EventEditProps) {
   }, [eventId, reset]);
 
   const onSubmit = async (data: EventForm) => {
+    if (!isEventCloseWithinDeadline(data.date, data.closedAt)) {
+      setFieldError("closedAt", {
+        type: "validate",
+        message: EVENT_CLOSE_LIMIT_MESSAGE,
+      });
+      return;
+    }
+
     setSaving(true);
     setError("");
 
@@ -162,6 +182,7 @@ export default function EventForm({ eventId }: EventEditProps) {
 
         <form
           onSubmit={handleSubmit(onSubmit)}
+          noValidate
           className="space-y-8"
         >
 
@@ -200,7 +221,7 @@ export default function EventForm({ eventId }: EventEditProps) {
                   type="datetime-local"
                   step={60}
                   disabled={saving}
-                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-500"
+                  className="text-3xl w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-500 [&::-webkit-calendar-picker-indicator]:invert"
                 />
               </div>
 
@@ -211,13 +232,25 @@ export default function EventForm({ eventId }: EventEditProps) {
 
                 <input
                   {...register("closedAt", {
-                    required: true,
+                    required: "La fecha de cierre es obligatoria",
+                    validate: (value) =>
+                      !selectedDate ||
+                      isEventCloseWithinDeadline(
+                        new Date(selectedDate),
+                        new Date(value)
+                      ) || EVENT_CLOSE_LIMIT_MESSAGE,
                   })}
                   type="datetime-local"
                   disabled={saving}
                   step={60}
-                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-500"
+                  max={maxClosedAt ? moment(maxClosedAt).format("YYYY-MM-DDTHH:mm") : undefined}
+                  className="text-3xl w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-500 [&::-webkit-calendar-picker-indicator]:invert"
                 />
+                {errors.closedAt?.message && (
+                  <p className="mt-2 text-sm text-red-400">
+                    {errors.closedAt.message}
+                  </p>
+                )}
               </div>
 
             </div>

@@ -123,7 +123,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (session.user.role !== "ADMINISTRADOR") {
+    if (session.user.role !== "ADMINISTRADOR" && session.user.role !== "NEO") {
       return NextResponse.json(
         { message: "No tiene permisos para crear cuentas" },
         { status: 403 }

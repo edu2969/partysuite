@@ -25,6 +25,10 @@ const EventSchema = new Schema(
       type: Date,
       required: true
     },
+    isActive: {
+      type: Boolean,
+      default: false,
+    },
 
     total: {
       type: Number,
