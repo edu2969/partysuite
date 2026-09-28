@@ -418,7 +418,7 @@ export default function EventsList({
           {events.map((event, index) => (
             <div
               key={event._id}
-              className={`relative rounded-xl border border-slate-800 bg-slate-900/70 p-5 shadow-lg transition hover:border-slate-700 ${index > 0 ? 'opacity-50' : 'opacity-100'}`}
+              className={`relative rounded-xl border border-slate-800 bg-slate-900/70 p-5 shadow-lg transition hover:border-slate-700 ${index > 0 ? 'opacity-40 grayscale-75' : 'opacity-100 grayscale-0'}`}
             >
 
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -437,6 +437,7 @@ export default function EventsList({
                       Asisten <span className="text-cyan-400">{event.arrives || 0}</span> de {event.total || 0}</span>
 
                   <p className="text-md font-normal text-gray-400">Cierre de lista: <b>{isPro ? "12:30 am" : moment(event.closedAt).format("HH:mm")}</b></p>
+                  {(!canImport && index === 0) &&  <p className="text-orange-400">📢 Ya no se puede importar más</p>}
                   {index === 0 && (
                     <EventCountdown date={event.date} closedAt={event.closedAt} isPro={isPro} />
                   )}
@@ -498,8 +499,7 @@ export default function EventsList({
 
                   
                 </div>                
-              </div>
-              {(!canImport && index === 0) &&  <div className="absolute right-6 bottom-3 text-orange-400">📢 Ya no se puede importar más</div>}              
+              </div>              
             </div>
           ))}
 
