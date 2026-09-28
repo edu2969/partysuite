@@ -288,11 +288,11 @@ export default function AccountForm({
                                     />
                                     <label className="flex">
                                         <div className="">
-                                            <p className="text-xl text-cyan-300 ml-2">
-                                                PRO
+                                            <p className={`text-xl ${isProCheck ? 'text-cyan-300' : 'text-neutral-400' } ml-2`}>
+                                                {isProCheck ? 'es PRO' : 'no es PRO'}
                                             </p>
-                                            <p className="text-cyan-800 text-md ml-2">
-                                                Puede importar hasta las <b>{isProCheck ? '12:30 am' : '11:00 am'}</b>
+                                            <p className={`${isProCheck ? 'text-cyan-800' : 'text-neutral-500'} text-md ml-2`}>
+                                                <b>{isProCheck ? 'Su lista cierra a las 12:30 am' : 'Su lista cierra según el evento'}</b>
                                             </p>
                                         </div>
                                     </label>
