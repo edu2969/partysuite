@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectMongoDB } from "@/lib/mongodb";
 import Event from "@/models/event";
 import { auth } from "@/app/utils/auth";
-import { parsePagination, queryAttenders } from "@/app/utils/attendersQuery";
+import {
+  parseAttenderSort,
+  parsePagination,
+  queryAttenders,
+} from "@/app/utils/attendersQuery";
 
 export async function GET(
   request: NextRequest,
@@ -20,8 +24,7 @@ export async function GET(
 
     if (
       session.user.role !== "ADMINISTRADOR" &&
-      session.user.role !== "LISTERO" &&
-      session.user.role !== "PORTERIA"
+      session.user.role !== "NEO"
     ) {
       return NextResponse.json(
         { message: "No tiene permisos para ver asistentes" },
@@ -33,12 +36,13 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const q = searchParams.get("q") || "";
     const { page, pageSize } = parsePagination(searchParams);
+    const sorting = parseAttenderSort(searchParams);
 
     await connectMongoDB();
 
     const [event, result] = await Promise.all([
       Event.findById(eventId).lean(),
-      queryAttenders({ eventId, q, page, pageSize }),
+      queryAttenders({ eventId, q, page, pageSize, ...sorting }),
     ]);
 
     return NextResponse.json({ event, ...result });

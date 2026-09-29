@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getEventCountdownStart } from "@/lib/eventClose";
 
 interface EventData {
   _id: string;
   name: string;
-  closeAt: string;
+  date: string;
+  closedAt: string;
   maxImport: number;
   actualImported: number;
 }
@@ -27,6 +29,17 @@ interface AttendersImportProps {
   eventId: string;
 }
 
+function formatCountdown(milliseconds: number) {
+  const totalSeconds = Math.max(0, Math.ceil(milliseconds / 1_000));
+  const hours = Math.floor(totalSeconds / 3_600);
+  const minutes = Math.floor((totalSeconds % 3_600) / 60);
+  const seconds = totalSeconds % 60;
+
+  return [hours, minutes, seconds]
+    .map((value) => String(value).padStart(2, "0"))
+    .join(":");
+}
+
 export default function AttendersImport({
   eventId,
 }: AttendersImportProps) {
@@ -35,6 +48,7 @@ export default function AttendersImport({
   const [text, setText] = useState("");
   const [messages, setMessages] = useState<ImportMessages | null>(null);
   const [importing, setImporting] = useState(false);
+  const [now, setNow] = useState<number | null>(null);
   const queryClient = useQueryClient()
 
   const { data: event, isLoading: isLoadingEvent } = useQuery<EventData>({
@@ -53,8 +67,71 @@ export default function AttendersImport({
     }
   })
 
+  const deadline = event ? new Date(event.closedAt).getTime() : Number.NaN;
+  const eventCountdownStart = event
+    ? getEventCountdownStart(event.date)?.getTime()
+    : undefined;
+  const progressStart = eventCountdownStart !== undefined && eventCountdownStart < deadline
+    ? eventCountdownStart
+    : event
+      ? new Date(event.date).getTime()
+      : Number.NaN;
+
+  useEffect(() => {
+    if (!Number.isFinite(deadline)) return;
+
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    const tick = () => {
+      const timestamp = Date.now();
+      setNow(timestamp);
+
+      if (timestamp < deadline) {
+        timeout = setTimeout(tick, Math.min(1_000, deadline - timestamp));
+      }
+    };
+
+    tick();
+    return () => {
+      if (timeout !== undefined) clearTimeout(timeout);
+    };
+  }, [deadline]);
+
+  const hasValidDeadline = Number.isFinite(deadline);
+  const deadlinePassed = hasValidDeadline && now !== null && now >= deadline;
+  const remainingTime = now === null ? null : Math.max(0, deadline - now);
+  const progressDuration = deadline - progressStart;
+  const remainingRatio = progressDuration > 0
+    ? Math.max(
+        0,
+        Math.min(
+          (deadline - Math.max(now ?? progressStart, progressStart)) / progressDuration,
+          1
+        )
+      )
+    : 0;
+  const elapsedRatio = 1 - remainingRatio;
+  const urgency = elapsedRatio >= 0.9 ? "red" : elapsedRatio >= 0.1 ? "amber" : "green";
+  const colors = {
+    green: { text: "text-emerald-400", fill: "bg-emerald-500" },
+    amber: { text: "text-amber-300", fill: "bg-amber-400" },
+    red: { text: "text-red-400", fill: "bg-red-500" },
+  }[urgency];
+
   const handleImport = async () => {
     if (importing) return;
+
+    if (!hasValidDeadline || Date.now() >= deadline) {
+      setMessages({
+        danger: [
+          {
+            item: hasValidDeadline
+              ? "Ya no será posible importar."
+              : "No se pudo verificar el plazo de importación.",
+          },
+        ],
+      });
+      return;
+    }
 
     setMessages(null);
 
@@ -183,6 +260,44 @@ export default function AttendersImport({
           Importación de Invitados
         </h4>
 
+        <div className={`mt-4 border-y px-3 py-3 ${deadlinePassed ? "border-red-500/40 bg-red-500/5" : "border-slate-700 bg-slate-900/50"}`}>
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+            <span className="text-sm font-medium text-gray-300">Tiempo restante para importar</span>
+            {deadlinePassed ? (
+              <span className="font-semibold text-red-400" role="status">
+                Ya no será posible importar.
+              </span>
+            ) : hasValidDeadline ? (
+              <time
+                className={`font-mono text-xl font-semibold tabular-nums ${colors.text}`}
+                role="timer"
+                aria-live="off"
+              >
+                {remainingTime === null ? "--:--:--" : formatCountdown(remainingTime)}
+              </time>
+            ) : (
+              <span className="text-sm text-red-400" role="status">
+                No se pudo determinar el cierre de importación.
+              </span>
+            )}
+          </div>
+          {hasValidDeadline && (
+            <div
+              className="h-2 overflow-hidden rounded-full bg-slate-700"
+              role="progressbar"
+              aria-label="Tiempo restante para importar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.ceil(remainingRatio * 100)}
+            >
+              <div
+                className={`h-full rounded-full transition-[width] duration-1000 ${colors.fill}`}
+                style={{ width: `${remainingRatio * 100}%` }}
+              />
+            </div>
+          )}
+        </div>
+
         <div className="flex flex-col mt-3 gap-2 rounded-md bg-yellow-500/10 px-3 py-2 text-2xl text-yellow-300">
           <p className="text-xl text-white">Pega acá una lista de invitados</p>
           <div className="flex">
@@ -201,7 +316,7 @@ export default function AttendersImport({
 Juan Perez 12.345.678-5
 Maria Gonzalez 15234567-8`}
           rows={8}
-          disabled={importing}
+          disabled={importing || !hasValidDeadline || deadlinePassed}
           className="block w-full resize-none rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 font-mono text-md text-gray-100 shadow-sm outline-none transition placeholder:text-gray-600 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 disabled:opacity-50"
         />
       </div>
@@ -305,7 +420,7 @@ Maria Gonzalez 15234567-8`}
         <button
           type="button"
           onClick={handleImport}
-          disabled={importing || event.maxImport <= 0}
+          disabled={importing || event.maxImport <= 0 || !hasValidDeadline || deadlinePassed}
           className="w-3/5 flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-3 font-semibold text-white shadow-sm transition hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/50 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {importing ? (

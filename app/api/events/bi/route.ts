@@ -49,6 +49,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const hastaInclusive = new Date(hasta);
+    hastaInclusive.setHours(23, 59, 59, 999);
+
     await connectMongoDB();
 
     const allowedRoles = ["ADMINISTRADOR", "LISTERO", "LISTERO_PRO", "PORTERIA"];
@@ -58,15 +61,19 @@ export async function GET(request: NextRequest) {
     const rpIdList = listeros.map((user) => user._id);
 
     const eventos = await Event.find({
-      date: { $gte: desde, $lte: hasta },
+      date: { $gte: desde, $lte: hastaInclusive },
     })
-      .select("_id")
+      .select("_id arrives")
       .lean();
 
     const eventoIds = eventos.map((evento) => evento._id);
+    const totalAsistentes = eventos.reduce(
+      (total, evento) => total + (evento.arrives ?? 0),
+      0
+    );
 
     if (eventoIds.length === 0) {
-      return NextResponse.json([]);
+      return NextResponse.json({ listeros: [], totalAsistentes: 0 });
     }
 
     // Cada BILista está atado a UN evento (eventoId), así que para un rango de
@@ -83,7 +90,7 @@ export async function GET(request: NextRequest) {
       },
       {
         $group: {
-          _id: "$listero",
+          _id: "$userId",
           inscritos: { $sum: "$inscritos" },
           asisten: { $sum: "$asisten" },
         },
@@ -117,7 +124,7 @@ export async function GET(request: NextRequest) {
       { $sort: { asisten: -1 } },
     ]);
 
-    return NextResponse.json(agregados);
+    return NextResponse.json({ listeros: agregados, totalAsistentes });
   } catch (error) {
     console.error("GET /api/events/bi:", error);
 

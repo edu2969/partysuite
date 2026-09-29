@@ -36,6 +36,15 @@ interface AttendersResponse {
 }
 
 const PAGE_SIZE = 10;
+type SortField = "arrives" | "inscriptions" | "attendance";
+type SortDirection = "none" | "desc" | "asc";
+type SortState = Record<SortField, SortDirection>;
+
+const SORT_CONTROLS: { field: SortField; label: string; queryKey: string }[] = [
+  { field: "arrives", label: "Asistencias", queryKey: "sortArrives" },
+  { field: "inscriptions", label: "Inscripciones", queryKey: "sortInscriptions" },
+  { field: "attendance", label: "% asistencia", queryKey: "sortAttendance" },
+];
 
 export default function AttenderList({
   eventId,
@@ -50,10 +59,16 @@ export default function AttenderList({
   const [invitados, setInvitados] = useState<AttenderItem[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
+  const [sorting, setSorting] = useState<SortState>({
+    arrives: "none",
+    inscriptions: "none",
+    attendance: "none",
+  });
 
   const router = useRouter();
 
   const loadingMoreRef = useRef(false);
+  const listRequestVersionRef = useRef(0);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const mainRef = useRef<HTMLElement | null>(null);
 
@@ -63,12 +78,23 @@ export default function AttenderList({
   // no había eventId — por eso, combinado con los useEffect de abajo,
   // "loading" se quedaba pegado en true para siempre en el modo "todos".
   const fetchPage = useCallback(
-    async (pageNum: number, filter: string): Promise<AttendersResponse | null> => {
+    async (
+      pageNum: number,
+      filter: string,
+      sortState: SortState
+    ): Promise<AttendersResponse | null> => {
       const params = new URLSearchParams({
         q: filter,
         page: String(pageNum),
         pageSize: String(PAGE_SIZE),
       });
+
+      for (const control of SORT_CONTROLS) {
+        const direction = sortState[control.field];
+        if (direction !== "none") {
+          params.set(control.queryKey, direction);
+        }
+      }
 
       const url = eventId
         ? `/api/events/${eventId}/attenders?${params.toString()}`
@@ -85,9 +111,10 @@ export default function AttenderList({
   // Carga inicial y cada cambio de búsqueda: reemplaza la lista y vuelve a
   // página 1.
   const loadFirstPage = useCallback(
-    async (filter: string) => {
-      const json = await fetchPage(1, filter);
-      if (!json) return;
+    async (filter: string, sortState: SortState) => {
+      const requestVersion = ++listRequestVersionRef.current;
+      const json = await fetchPage(1, filter, sortState);
+      if (!json || requestVersion !== listRequestVersionRef.current) return;
 
       setEvento(json.event ?? null);
       setInvitados(json.items);
@@ -104,12 +131,13 @@ export default function AttenderList({
 
     loadingMoreRef.current = true;
     setLoadingMore(true);
+    const requestVersion = listRequestVersionRef.current;
 
     try {
       const nextPage = page + 1;
-      const json = await fetchPage(nextPage, text);
+      const json = await fetchPage(nextPage, text, sorting);
 
-      if (json) {
+      if (json && requestVersion === listRequestVersionRef.current) {
         setInvitados((prev) => [...prev, ...json.items]);
         setPage(nextPage);
         setHasMore(json.hasMore);
@@ -120,7 +148,7 @@ export default function AttenderList({
       loadingMoreRef.current = false;
       setLoadingMore(false);
     }
-  }, [fetchPage, hasMore, page, text]);
+  }, [fetchPage, hasMore, page, sorting, text]);
 
   // Carga inicial. Ya NO corta si falta eventId — ese es justamente el
   // modo "todos los invitados".
@@ -130,7 +158,7 @@ export default function AttenderList({
     (async () => {
       setLoading(true);
       try {
-        await loadFirstPage("");
+        await loadFirstPage("", sorting);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -148,7 +176,7 @@ export default function AttenderList({
 
     const timer = setTimeout(async () => {
       try {
-        await loadFirstPage(text);
+          await loadFirstPage(text, sorting);
       } finally {
         setSearching(false);
       }
@@ -156,7 +184,7 @@ export default function AttenderList({
 
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [text, eventId]);
+  }, [text, eventId, sorting, loadFirstPage]);
 
   // IntersectionObserver sobre un sentinel al final de la lista, con
   // `root` apuntando al <main> scrolleable (no al viewport).
@@ -180,6 +208,26 @@ export default function AttenderList({
 
   const handleBack = () => {
     router.back();
+  };
+
+  const toggleSort = (field: SortField) => {
+    listRequestVersionRef.current += 1;
+    setHasMore(false);
+    setPage(1);
+    setSorting((current) => ({
+      ...current,
+      [field]: current[field] === "none"
+        ? "desc"
+        : current[field] === "desc"
+          ? "asc"
+          : "none",
+    }));
+  };
+
+  const sortIndicator = (direction: SortDirection) => {
+    if (direction === "desc") return "↑";
+    if (direction === "asc") return "↓";
+    return "-";
   };
 
   const porcentajeAsistencia = (arrives: number, inscriptions: number) => {
@@ -235,13 +283,36 @@ export default function AttenderList({
 
           <input
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => {
+              listRequestVersionRef.current += 1;
+              setHasMore(false);
+              setPage(1);
+              setText(e.target.value);
+            }}
             placeholder="Texto..."
             className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none focus:border-cyan-500"
           />
 
           <div className="mt-2 h-5 text-sm text-gray-400">
             {searching && "Buscando..."}
+          </div>
+
+          <div className="mt-3 flex flex-wrap gap-2" aria-label="Ordenar asistentes">
+            {SORT_CONTROLS.map(({ field, label }) => (
+              <button
+                key={field}
+                type="button"
+                onClick={() => toggleSort(field)}
+                aria-label={`${label}: ${sorting[field] === "none" ? "sin orden" : sorting[field] === "desc" ? "decreciente" : "creciente"}`}
+                aria-pressed={sorting[field] !== "none"}
+                className={`inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition ${sorting[field] === "none" ? "border-slate-700 bg-slate-900 text-gray-300 hover:border-slate-500" : "border-cyan-500/50 bg-cyan-500/10 text-cyan-200"}`}
+              >
+                <span>{label}</span>
+                <span className="min-w-4 text-center font-mono text-base font-semibold" aria-hidden="true">
+                  {sortIndicator(sorting[field])}
+                </span>
+              </button>
+            ))}
           </div>
 
         </div>

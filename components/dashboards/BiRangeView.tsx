@@ -26,6 +26,7 @@ export default function BiRangeView() {
   const [hasta, setHasta] = useState(() => formatDateInput(new Date()));
 
   const [listeros, setListeros] = useState<ListeroData[]>([]);
+  const [totalAsistentes, setTotalAsistentes] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<"torta" | "tabla" | "ranking">(
@@ -54,10 +55,14 @@ export default function BiRangeView() {
           throw new Error(result?.message || "No fue posible cargar el BI");
         }
 
-        const data: ListeroData[] = await response.json();
+        const data: {
+          listeros: ListeroData[];
+          totalAsistentes: number;
+        } = await response.json();
 
         if (!cancelled) {
-          setListeros(data || []);
+          setListeros(data.listeros || []);
+          setTotalAsistentes(data.totalAsistentes || 0);
         }
       } catch (err) {
         console.error(err);
@@ -66,6 +71,7 @@ export default function BiRangeView() {
             err instanceof Error ? err.message : "No fue posible cargar el BI"
           );
           setListeros([]);
+          setTotalAsistentes(0);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -198,7 +204,7 @@ export default function BiRangeView() {
                   aria-labelledby="tab-torta"
                   className="flex min-h-100 items-center justify-center rounded-lg bg-slate-950/50"
                 >
-                  <PieChart listeros={listeros} />
+                  <PieChart listeros={listeros} totalAsistentes={totalAsistentes} />
                 </div>
               )}
 
@@ -244,7 +250,10 @@ export default function BiRangeView() {
                           </td>
 
                           <td className="px-3 py-3 text-cyan-400">
-                            {biReg.asisten}
+                            {totalAsistentes > 0
+                              ? ((biReg.asisten / totalAsistentes) * 100).toFixed(1)
+                              : "0.0"}
+                            %
                           </td>
                         </tr>
                       ))}

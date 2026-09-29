@@ -1,6 +1,8 @@
 import Attender from "@/models/attender";
 import Guest from "@/models/guest";
 import User from "@/models/user";
+import Event from "@/models/event";
+import { Types } from "mongoose";
 
 export const DEFAULT_PAGE_SIZE = 10;
 export const MAX_PAGE_SIZE = 50;
@@ -30,6 +32,22 @@ interface QueryAttendersOptions {
   q?: string;
   page: number;
   pageSize: number;
+  sortArrives?: SortDirection;
+  sortInscriptions?: SortDirection;
+  sortAttendance?: SortDirection;
+}
+
+export type SortDirection = "asc" | "desc";
+
+export function parseAttenderSort(searchParams: URLSearchParams) {
+  const parseDirection = (value: string | null): SortDirection | undefined =>
+    value === "asc" || value === "desc" ? value : undefined;
+
+  return {
+    sortArrives: parseDirection(searchParams.get("sortArrives")),
+    sortInscriptions: parseDirection(searchParams.get("sortInscriptions")),
+    sortAttendance: parseDirection(searchParams.get("sortAttendance")),
+  };
 }
 
 // Usada tanto por /api/events/[eventId]/attenders como por /api/attenders
@@ -41,9 +59,16 @@ export async function queryAttenders({
   q,
   page,
   pageSize,
+  sortArrives,
+  sortInscriptions,
+  sortAttendance,
 }: QueryAttendersOptions) {
   const baseQuery: Record<string, unknown> = {};
-  if (eventId) baseQuery.eventId = eventId;
+  if (eventId) {
+    baseQuery.eventId = Types.ObjectId.isValid(eventId)
+      ? new Types.ObjectId(eventId)
+      : null;
+  }
 
   const trimmedQ = (q || "").trim();
 
@@ -61,50 +86,107 @@ export async function queryAttenders({
     ];
   }
 
-  // Con un evento fijo, orden cronológico de llegada tiene sentido. Sin
-  // evento (listado global), lo más reciente primero es más útil.
-  const sort: Record<string, 1 | -1> = eventId ? { fecha: 1 } : { fecha: -1 };
+  const sort: Record<string, 1 | -1> = {};
+  if (sortArrives) sort.sortArrives = sortArrives === "asc" ? 1 : -1;
+  if (sortInscriptions) sort.sortInscriptions = sortInscriptions === "asc" ? 1 : -1;
+  if (sortAttendance) sort.sortAttendance = sortAttendance === "asc" ? 1 : -1;
+  sort.createdAt = eventId ? 1 : -1;
+  sort._id = 1;
 
-  const [attenders, totalItems] = await Promise.all([
-    Attender.find(baseQuery)
-      .populate("guestId", "names arrives inscriptions banned vip royalties")
-      .populate("userId", "name")
-      .sort(sort)
-      .skip((page - 1) * pageSize)
-      .limit(pageSize)
-      .lean(),
-    Attender.countDocuments(baseQuery),
-  ]);
+  const [result] = await Attender.aggregate([
+    { $match: baseQuery },
+    {
+      $lookup: {
+        from: Guest.collection.name,
+        localField: "guestId",
+        foreignField: "_id",
+        as: "guest",
+      },
+    },
+    { $unwind: { path: "$guest", preserveNullAndEmptyArrays: true } },
+    {
+      $addFields: {
+        sortArrives: { $ifNull: ["$guest.arrives", 0] },
+        sortInscriptions: { $ifNull: ["$guest.inscriptions", 0] },
+        sortAttendance: {
+          $cond: [
+            { $gt: [{ $ifNull: ["$guest.inscriptions", 0] }, 0] },
+            {
+              $divide: [
+                { $multiply: [{ $ifNull: ["$guest.arrives", 0] }, 100] },
+                "$guest.inscriptions",
+              ],
+            },
+            0,
+          ],
+        },
+      },
+    },
+    { $sort: sort },
+    {
+      $facet: {
+        items: [
+          { $skip: (page - 1) * pageSize },
+          { $limit: pageSize },
+          {
+            $lookup: {
+              from: User.collection.name,
+              localField: "userId",
+              foreignField: "_id",
+              as: "user",
+            },
+          },
+          { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+          {
+            $lookup: {
+              from: Event.collection.name,
+              localField: "eventId",
+              foreignField: "_id",
+              as: "event",
+            },
+          },
+          { $unwind: { path: "$event", preserveNullAndEmptyArrays: true } },
+          {
+            $project: {
+              _id: 1,
+              guestId: "$guest._id",
+              names: { $ifNull: ["$guest.names", ""] },
+              user: { $ifNull: ["$user.name", ""] },
+              eventName: { $ifNull: ["$event.name", ""] },
+              banned: { $ifNull: ["$guest.banned", false] },
+              arrives: { $ifNull: ["$guest.arrives", 0] },
+              inscriptions: { $ifNull: ["$guest.inscriptions", 0] },
+              vip: { $ifNull: ["$guest.vip", false] },
+              royalties: "$guest.royalties",
+              checktime: 1,
+            },
+          },
+        ],
+        metadata: [{ $count: "totalItems" }],
+      },
+    },
+  ]).allowDiskUse(true);
+
+  const attenders = result?.items ?? [];
+  const totalItems = result?.metadata?.[0]?.totalItems ?? 0;
 
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
 
   const items = attenders.map((attender) => {
-    const guest = attender.guestId as {
-      _id?: string;
-      names?: string;
-      arrives?: number;
-      inscriptions?: number;
-      banned?: boolean;
-      vip: boolean;
-      royalties?: string;
-    } | null;
-    const user = attender.userId as { _id?: string; name?: string } | null;
-    const event = attender.eventId as { _id?: string; name?: string } | null;
-
     return {
       _id: String(attender._id),
-      guestId: String(guest?._id || ""),
-      names: guest?.names || "",
-      user: user?.name || "",
-      eventName: event?.name || "",
-      banned: Boolean(guest?.banned),
-      arrives: guest?.arrives || 0,
-      inscriptions: guest?.inscriptions || 0,
-      vip: Boolean(guest?.vip),
+      guestId: String(attender.guestId || ""),
+      names: attender.names || "",
+      user: attender.user || "",
+      eventName: attender.eventName || "",
+      banned: Boolean(attender.banned),
+      arrives: attender.arrives || 0,
+      inscriptions: attender.inscriptions || 0,
+      vip: Boolean(attender.vip),
       checktime: attender.checktime
         ? new Date(attender.checktime).toISOString()
         : undefined,
-      royalties: guest?.royalties,
+      royalties: attender.royalties,
     };
   });
 
