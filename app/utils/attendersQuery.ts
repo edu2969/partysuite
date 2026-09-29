@@ -172,7 +172,19 @@ export async function queryAttenders({
 
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
 
-  const items = attenders.map((attender) => {
+  const items = attenders.map((attender: {
+    _id: string,
+    guestId: String,
+    names: String,
+    user: String,
+    eventName: String,
+    banned: boolean,
+    inscriptions: number,
+    vip: boolean,
+    checktime: Date,
+    arrives: number,
+    royalties: String;
+  }) => {
     return {
       _id: String(attender._id),
       guestId: String(attender.guestId || ""),
