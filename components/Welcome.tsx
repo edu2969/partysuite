@@ -8,8 +8,8 @@ import { launchConfetti } from '@/app/utils/confeti'
 import { FaCheckCircle } from 'react-icons/fa';
 import { TbCameraSearch } from "react-icons/tb";
 import { useRouter } from 'next/navigation';
-import moment from 'moment';
 import { useSoundPlayer } from './context/SoundPlayerContext';
+import { format } from 'date-fns';
 
 type PopupKind = 'success' | 'error'
 interface PopupState {
@@ -284,7 +284,7 @@ export default function Welcome() {
             <p id="time" className="font-bold text-5xl sm:text-6xl">{time}</p>
             {actualEvent && (
               <h4 className="text-base sm:text-xl mt-1">
-                Cierre de lista <b>{moment(actualEvent.closedAt).format("HH:mm")}</b>
+                Cierre de lista <b>{format(actualEvent.listClosedAt, "HH:mm")}</b>
               </h4>
             )}
           </div>

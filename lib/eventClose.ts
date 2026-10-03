@@ -1,7 +1,9 @@
-const EVENT_TIME_ZONE = "America/Santiago";
+export const EVENT_TIME_ZONE = "America/Santiago";
 
 export const EVENT_CLOSE_LIMIT_MESSAGE =
-  "La fecha de cierre de lista no puede superar las 05:00 del día siguiente a la fecha del evento.";
+  "El cierre del evento no puede superar las 05:00 del día siguiente a la fecha del evento.";
+export const LIST_CLOSE_ORDER_MESSAGE =
+  "El cierre de lista debe ser posterior al inicio y no puede superar el cierre del evento.";
 
 function getDateParts(date: Date, includeTime = false) {
   const formatter = new Intl.DateTimeFormat("en-CA", {
@@ -51,6 +53,168 @@ function getDateInEventTimeZone(
   return new Date(timestamp);
 }
 
+function getCalendarDateParts(date: Date | string) {
+  if (typeof date === "string") {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+    if (match) {
+      const [, yearText, monthText, dayText] = match;
+      const year = Number(yearText);
+      const month = Number(monthText);
+      const day = Number(dayText);
+      const parsed = new Date(Date.UTC(year, month - 1, day));
+
+      if (
+        parsed.getUTCFullYear() !== year ||
+        parsed.getUTCMonth() + 1 !== month ||
+        parsed.getUTCDate() !== day
+      ) {
+        return null;
+      }
+
+      return { year, month, day };
+    }
+  }
+
+  const parsedDate = new Date(date);
+  if (Number.isNaN(parsedDate.getTime())) return null;
+  return getDateParts(parsedDate);
+}
+
+export function getEventDateTime(
+  businessDate: string,
+  time: string,
+  dayOffset = 0
+): Date | null {
+  const dateParts = getCalendarDateParts(businessDate);
+  const timeMatch = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(time);
+  if (!dateParts || !timeMatch) return null;
+
+  const calendarDate = new Date(
+    Date.UTC(
+      dateParts.year,
+      dateParts.month - 1,
+      dateParts.day + dayOffset
+    )
+  );
+  const hour = Number(timeMatch[1]);
+  const minute = Number(timeMatch[2]);
+  const dateTime = getDateInEventTimeZone(
+    calendarDate.getUTCFullYear(),
+    calendarDate.getUTCMonth() + 1,
+    calendarDate.getUTCDate(),
+    hour,
+    minute
+  );
+  const resolvedParts = getDateParts(dateTime, true);
+
+  if (
+    resolvedParts.year !== calendarDate.getUTCFullYear() ||
+    resolvedParts.month !== calendarDate.getUTCMonth() + 1 ||
+    resolvedParts.day !== calendarDate.getUTCDate() ||
+    resolvedParts.hour !== hour ||
+    resolvedParts.minute !== minute
+  ) {
+    return null;
+  }
+
+  return dateTime;
+}
+
+export function getEventSchedule(
+  businessDate: string,
+  startTime: string,
+  listCloseTime: string,
+  closeTime: string
+):
+  | {
+      ok: true;
+      businessDate: Date;
+      startsAt: Date;
+      listClosedAt: Date;
+      closeAt: Date;
+    }
+  | {
+      ok: false;
+      field: "businessDate" | "startTime" | "listCloseTime" | "closeTime";
+      message: string;
+    } {
+  const dateParts = getCalendarDateParts(businessDate);
+  if (!dateParts) {
+    return {
+      ok: false,
+      field: "businessDate",
+      message: "La fecha o las horas ingresadas no son válidas para Chile.",
+    };
+  }
+
+  const startAt = getEventDateTime(businessDate, startTime);
+  if (!startAt) {
+    return {
+      ok: false,
+      field: "startTime",
+      message: "La hora de inicio no es válida para Chile.",
+    };
+  }
+
+  const closeAt = getEventDateTime(businessDate, closeTime, 1);
+  if (!closeAt) {
+    return {
+      ok: false,
+      field: "closeTime",
+      message: "La hora de cierre del evento no es válida para Chile.",
+    };
+  }
+
+  const deadline = getEventCloseDeadline(businessDate);
+  if (!deadline) {
+    return {
+      ok: false,
+      field: "businessDate",
+      message: "La fecha del evento no es válida.",
+    };
+  }
+
+  if (closeAt.getTime() > deadline.getTime()) {
+    return {
+      ok: false,
+      field: "closeTime",
+      message: EVENT_CLOSE_LIMIT_MESSAGE,
+    };
+  }
+
+  const startMinutes =
+    Number(startTime.slice(0, 2)) * 60 + Number(startTime.slice(3));
+  const listCloseMinutes =
+    Number(listCloseTime.slice(0, 2)) * 60 + Number(listCloseTime.slice(3));
+  const listClosedAt = getEventDateTime(
+    businessDate,
+    listCloseTime,
+    listCloseMinutes < startMinutes ? 1 : 0
+  );
+
+  if (
+    !listClosedAt ||
+    listClosedAt.getTime() <= startAt.getTime() ||
+    listClosedAt.getTime() > closeAt.getTime()
+  ) {
+    return {
+      ok: false,
+      field: "listCloseTime",
+      message: LIST_CLOSE_ORDER_MESSAGE,
+    };
+  }
+
+  return {
+    ok: true,
+    businessDate: new Date(
+      Date.UTC(dateParts.year, dateParts.month - 1, dateParts.day)
+    ),
+    startsAt: startAt,
+    listClosedAt,
+    closeAt,
+  };
+}
+
 export function getEventCalendarDayStart(eventDate: Date | string): Date | null {
   const parsedEventDate = new Date(eventDate);
   if (Number.isNaN(parsedEventDate.getTime())) return null;
@@ -65,10 +229,9 @@ export function getEventCalendarDayStart(eventDate: Date | string): Date | null 
 }
 
 export function getEventCountdownStart(eventDate: Date | string): Date | null {
-  const parsedEventDate = new Date(eventDate);
-  if (Number.isNaN(parsedEventDate.getTime())) return null;
+  const eventDay = getCalendarDateParts(eventDate);
+  if (!eventDay) return null;
 
-  const eventDay = getDateParts(parsedEventDate);
   return getDateInEventTimeZone(
     eventDay.year,
     eventDay.month,
@@ -79,10 +242,9 @@ export function getEventCountdownStart(eventDate: Date | string): Date | null {
 }
 
 export function getEventProCloseAt(eventDate: Date | string): Date | null {
-  const parsedEventDate = new Date(eventDate);
-  if (Number.isNaN(parsedEventDate.getTime())) return null;
+  const eventDay = getCalendarDateParts(eventDate);
+  if (!eventDay) return null;
 
-  const eventDay = getDateParts(parsedEventDate);
   const followingDay = new Date(
     Date.UTC(eventDay.year, eventDay.month - 1, eventDay.day + 1)
   );
@@ -97,10 +259,8 @@ export function getEventProCloseAt(eventDate: Date | string): Date | null {
 }
 
 export function getEventCloseDeadline(eventDate: Date | string): Date | null {
-  const parsedEventDate = new Date(eventDate);
-  if (Number.isNaN(parsedEventDate.getTime())) return null;
-
-  const eventDay = getDateParts(parsedEventDate);
+  const eventDay = getCalendarDateParts(eventDate);
+  if (!eventDay) return null;
   const nextDay = new Date(
     Date.UTC(eventDay.year, eventDay.month - 1, eventDay.day + 1)
   );

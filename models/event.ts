@@ -15,19 +15,31 @@ const EventSchema = new Schema(
       trim: true,
     },
 
-    date: {
+    businessDate: {
       type: Date,
       required: true,
       index: true,
     },
 
-    closedAt: {
+    startsAt: {
       type: Date,
-      required: true
+      required: true,
     },
-    isActive: {
-      type: Boolean,
-      default: false,
+
+    timeZone: {
+      type: String,
+      required: true,
+      default: "America/Santiago",
+    },
+
+    listClosedAt: {
+      type: Date,
+      required: true,
+    },
+
+    closeAt: {
+      type: Date,
+      required: true,
     },
 
     total: {

@@ -7,7 +7,6 @@ import BILista from "@/models/biLista";
 import User from "@/models/user";
 import { checkRut } from "@/app/utils/rut";
 import { auth } from "@/app/utils/auth";
-import moment, { max } from "moment";
 
 interface ImportRequest {
   entradas: string[];
@@ -99,8 +98,8 @@ export async function POST(request: NextRequest) {
     };
 
     if(userData.role === "LISTERO") {
-      const momentoCierre = moment(eventSelected.closedAt);
-      if (momentoCierre.isBefore(new Date())) {
+      const momentoCierre = new Date(eventSelected.listClosedAt);
+      if (momentoCierre < new Date()) {
         addMessage("danger", "La lista ha cerrado. Lo sentimos");
         return NextResponse.json(messages);
       }

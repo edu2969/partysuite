@@ -8,18 +8,19 @@ import PieChart from "../prefabs/PieChart";
 import VerticalRankingBar from "../prefabs/VerticalRankingBar";
 import { ListeroData } from "./types";
 import Loader from "../prefabs/Loader";
-import moment from "moment";
 import {
-  EVENT_CLOSE_LIMIT_MESSAGE,
-  getEventCloseDeadline,
-  isEventCloseWithinDeadline,
+  EVENT_TIME_ZONE,
+  getEventSchedule,
 } from "@/lib/eventClose";
+import { getCurrentBusinessDate } from "@/lib/businessTime";
 
 interface EventData {
   _id?: string;
   name: string;
-  date: string;
-  closedAt: string;
+  businessDate: string;
+  startsAt?: string;
+  listClosedAt: string;
+  closeAt: string;
   total: number;
   arrives: number;
   averageCheckTime: number;
@@ -27,12 +28,28 @@ interface EventData {
 
 interface EventForm {
   name: string;
-  date: string;
-  closedAt: string;
+  businessDate: string;
+  startTime: string;
+  listCloseTime: string;
+  closeTime: string;
 }
 
 interface EventEditProps {
   eventId?: string;
+}
+
+function formatEventTime(value: string | Date | undefined, fallback: string) {
+  if (!value) return fallback;
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return fallback;
+
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: EVENT_TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(date);
 }
 
 export default function EventForm({ eventId }: EventEditProps) {
@@ -55,14 +72,12 @@ export default function EventForm({ eventId }: EventEditProps) {
   } = useForm<EventForm>({
     defaultValues: {
       name: "",
-      date: moment().startOf("day").format("YYYY-MM-DDTHH:mm"),
-      closedAt: moment().startOf("day").add(1, "day").add(1.5, "hour").format("YYYY-MM-DDTHH:mm"),
+      businessDate: getCurrentBusinessDate(),
+      startTime: "23:00",
+      listCloseTime: "23:30",
+      closeTime: "05:00",
     },
   });
-  const selectedDate = watch("date");
-  const maxClosedAt = selectedDate
-    ? getEventCloseDeadline(new Date(selectedDate))
-    : null;
 
   useEffect(() => {
     const load = async () => {
@@ -83,8 +98,10 @@ export default function EventForm({ eventId }: EventEditProps) {
 
           reset({
             name: event.name,
-            date: moment(event.date).format("YYYY-MM-DDTHH:mm"),
-            closedAt: moment(event.closedAt).format("YYYY-MM-DDTHH:mm")
+            businessDate: String(event.businessDate).slice(0, 10),
+            startTime: formatEventTime(event.startsAt, "23:00"),
+            listCloseTime: formatEventTime(event.listClosedAt, "23:30"),
+            closeTime: formatEventTime(event.closeAt, "05:00"),
           });
         }
 
@@ -106,10 +123,17 @@ export default function EventForm({ eventId }: EventEditProps) {
   }, [eventId, reset]);
 
   const onSubmit = async (data: EventForm) => {
-    if (!isEventCloseWithinDeadline(data.date, data.closedAt)) {
-      setFieldError("closedAt", {
+    const schedule = getEventSchedule(
+      data.businessDate,
+      data.startTime,
+      data.listCloseTime,
+      data.closeTime
+    );
+
+    if (!schedule.ok) {
+      setFieldError(schedule.field, {
         type: "validate",
-        message: EVENT_CLOSE_LIMIT_MESSAGE,
+        message: schedule.message,
       });
       return;
     }
@@ -120,8 +144,10 @@ export default function EventForm({ eventId }: EventEditProps) {
     try {
       const payload = {
         name: data.name.trim(),
-        date: moment(data.date).toISOString(),
-        closedAt: moment(data.closedAt).toISOString()
+        businessDate: data.businessDate,
+        startTime: data.startTime,
+        listCloseTime: data.listCloseTime,
+        closeTime: data.closeTime,
       };
 
       const response = await fetch(
@@ -211,14 +237,14 @@ export default function EventForm({ eventId }: EventEditProps) {
 
               <div>
                 <label className="mb-2 block text-sm font-medium text-gray-300">
-                  Fecha
+                  Fecha de negocio
                 </label>
 
                 <input
-                  {...register("date", {
+                  {...register("businessDate", {
                     required: true,
                   })}
-                  type="datetime-local"
+                  type="date"
                   step={60}
                   disabled={saving}
                   className="text-3xl w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-500 [&::-webkit-calendar-picker-indicator]:invert"
@@ -227,28 +253,64 @@ export default function EventForm({ eventId }: EventEditProps) {
 
               <div>
                 <label className="mb-2 block text-sm font-medium text-gray-300">
+                  Inicio de importaciones
+                </label>
+
+                <input
+                  {...register("startTime", {
+                    required: "La hora de inicio es obligatoria",
+                  })}
+                  type="time"
+                  disabled={saving}
+                  step={60}
+                  className="text-3xl w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-500 [&::-webkit-calendar-picker-indicator]:invert"
+                />
+                {errors.startTime?.message && (
+                  <p className="mt-2 text-sm text-red-400">
+                    {errors.startTime.message}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-300">
                   Cierre de importaciones
                 </label>
 
                 <input
-                  {...register("closedAt", {
-                    required: "La fecha de cierre es obligatoria",
-                    validate: (value) =>
-                      !selectedDate ||
-                      isEventCloseWithinDeadline(
-                        new Date(selectedDate),
-                        new Date(value)
-                      ) || EVENT_CLOSE_LIMIT_MESSAGE,
+                  {...register("listCloseTime", {
+                    required: "La hora de cierre de lista es obligatoria",
                   })}
-                  type="datetime-local"
+                  type="time"
                   disabled={saving}
                   step={60}
-                  max={maxClosedAt ? moment(maxClosedAt).format("YYYY-MM-DDTHH:mm") : undefined}
                   className="text-3xl w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-500 [&::-webkit-calendar-picker-indicator]:invert"
                 />
-                {errors.closedAt?.message && (
+                {errors.listCloseTime?.message && (
                   <p className="mt-2 text-sm text-red-400">
-                    {errors.closedAt.message}
+                    {errors.listCloseTime.message}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-300">
+                  Cierre del evento
+                </label>
+
+                <input
+                  {...register("closeTime", {
+                    required: "La hora de cierre del evento es obligatoria",
+                  })}
+                  type="time"
+                  disabled={saving}
+                  step={60}
+                  max="05:00"
+                  className="text-3xl w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-500 [&::-webkit-calendar-picker-indicator]:invert"
+                />
+                {errors.closeTime?.message && (
+                  <p className="mt-2 text-sm text-red-400">
+                    {errors.closeTime.message}
                   </p>
                 )}
               </div>
@@ -263,6 +325,7 @@ export default function EventForm({ eventId }: EventEditProps) {
 
             <div className="mt-6 flex justify-end space-x-4 text-lg md:text-2xl">
               <button
+                type="button"
                 onClick={handleBack}
                 className="rounded-lg bg-neutral-600 px-6 py-3 font-semibold text-white transition hover:bg-neutral-500 disabled:cursor-not-allowed disabled:opacity-50"
               >
@@ -411,4 +474,3 @@ export default function EventForm({ eventId }: EventEditProps) {
     </main>
   );
 }
-

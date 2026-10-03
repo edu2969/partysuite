@@ -1,7 +1,8 @@
 export interface EventInfo {
   id: string
   name: string
-  closedAt: string
+  listClosedAt: string
+  closeAt: string
   cerrado: boolean
 }
 

@@ -23,7 +23,19 @@ export default function About({
                     </div>
                 </div>
             </div>
-        </div>    
+        </div>
+        {isNeo && (<div className="fixed bottom-8 right-50 cursor-pointer text-xl ml-2 border-2 border-transparent hover:border-white/20 px-3 rounded-md" style={{ transform: "rotate(-45deg)" }} onClick={async () => {
+            const resp = await fetch("/api/regenerator?action=events")
+            if(resp.ok) {
+                launchConfetti({
+                    count: 180,
+                    duration: 3600,
+                    spread: 440,
+                });
+            }
+        }}>
+            ⚔️ Events
+        </div>)}  
         {isNeo && (<div className="fixed bottom-8 right-6 cursor-pointer text-xl ml-2 border-2 border-transparent hover:border-white/20 px-3 rounded-md" style={{ transform: "rotate(-45deg)" }} onClick={async () => {
             const resp = await fetch("/api/regenerator?action=checktimes")
             if(resp.ok) {

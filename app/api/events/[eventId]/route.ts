@@ -7,8 +7,8 @@ import { isAccountRole } from "@/app/utils/isAccountRole";
 import User from "@/models/user";
 import Attender from "@/models/attender";
 import {
-  EVENT_CLOSE_LIMIT_MESSAGE,
-  isEventCloseWithinDeadline,
+  EVENT_TIME_ZONE,
+  getEventSchedule,
 } from "@/lib/eventClose";
 
 export async function GET(
@@ -77,24 +77,37 @@ export async function PUT(
   const body = await request.json().catch(() => null);
  
   const name = body?.name;
-  const date = body?.date;
-  const closedAt = body?.closedAt;
+  const businessDate = body?.businessDate;
+  const startTime = body?.startTime;
+  const listCloseTime = body?.listCloseTime;
+  const closeTime = body?.closeTime;
 
   if (typeof name !== "string" || !name.trim()) {
     return NextResponse.json({ error: "'name' es requerido" }, { status: 400 });
   }
  
-  if (typeof date !== "string" || !date.trim()) {
-    return NextResponse.json({ error: "'date' es requerido" }, { status: 400 });
-  }
-
-  if (typeof closedAt !== "string" || !closedAt.trim()) {
-    return NextResponse.json({ error: "'closedAt' es requerido" }, { status: 400 });
-  }
-
-  if (!isEventCloseWithinDeadline(date, closedAt)) {
+  if (
+    typeof businessDate !== "string" ||
+    typeof startTime !== "string" ||
+    typeof listCloseTime !== "string" ||
+    typeof closeTime !== "string"
+  ) {
     return NextResponse.json(
-      { message: EVENT_CLOSE_LIMIT_MESSAGE },
+      { error: "La fecha y las horas del evento son requeridas" },
+      { status: 400 }
+    );
+  }
+
+  const schedule = getEventSchedule(
+    businessDate,
+    startTime,
+    listCloseTime,
+    closeTime
+  );
+
+  if (!schedule.ok) {
+    return NextResponse.json(
+      { message: schedule.message },
       { status: 400 }
     );
   }
@@ -106,8 +119,11 @@ export async function PUT(
   await connectMongoDB();
   const update: Record<string, unknown> = {
     name: name.trim(),
-    date: date.trim().toLowerCase(),
-    closedAt: closedAt.trim().toLowerCase()
+    businessDate: schedule.businessDate,
+    startsAt: schedule.startsAt,
+    timeZone: EVENT_TIME_ZONE,
+    listClosedAt: schedule.listClosedAt,
+    closeAt: schedule.closeAt,
   };
  
   try {

@@ -365,8 +365,10 @@ export default function AttenderList({
                         ? `Llegada: ${new Date(g.checktime).toLocaleTimeString(
                           "es-CL",
                           {
+                            timeZone: "America/Santiago",
                             hour: "2-digit",
                             minute: "2-digit",
+                            hourCycle: "h23",
                           }
                         )}`
                         : "No ha llegado"}

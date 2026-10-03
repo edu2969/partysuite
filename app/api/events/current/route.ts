@@ -1,53 +1,65 @@
-import { NextResponse } from 'next/server'
-import moment from 'moment'
-import { connectMongoDB } from '@/lib/mongodb'
-import Event from '@/models/event'
+import { NextResponse } from "next/server"
 
-// La respuesta depende de la hora actual del request, así que no debe
-// cachearse ni pre-renderizarse estáticamente.
-export const dynamic = 'force-dynamic'
+import { connectMongoDB } from "@/lib/mongodb"
+import Event from "@/models/event"
 
-// Antes de esta hora se considera que todavía es "el evento de ayer" (la
-// fiesta que arrancó anoche y sigue funcionando pasada la medianoche).
-const HORA_CORTE_MADRUGADA = 5
+import {
+  DEFAULT_TIME_ZONE,
+  getCurrentBusinessDate,
+} from "@/lib/businessTime"
+
+// La respuesta depende de la hora actual del request.
+// No debe cachearse ni pre-renderizarse estáticamente.
+export const dynamic = "force-dynamic"
 
 export async function GET() {
   await connectMongoDB()
 
-  // OJO: moment() usa la hora LOCAL DEL SERVIDOR. Si el server no corre en
-  // horario de Chile (típico en hosting con TZ=UTC), el corte de las 5am
-  // va a quedar desfasado. Si es el caso, instalen moment-timezone y usen
-  // moment().tz('America/Santiago') en vez de moment() a secas.
-  const ahora = moment()
+  const timeZone = DEFAULT_TIME_ZONE
+  const businessDate =
+    getCurrentBusinessDate(timeZone)
+  const businessDateUtc =
+    new Date(`${businessDate}T00:00:00.000Z`)
+  const now = new Date()
 
-  const diaDelEvento =
-    ahora.hour() < HORA_CORTE_MADRUGADA
-      ? ahora.clone().subtract(1, 'day')
-      : ahora.clone()
-
-  // 00:00:00 del día que corresponde (hoy o ayer, según la hora actual)
-  const inicioDelDia = diaDelEvento.startOf('day').toDate()
-
-  // Eventos desde ese día en adelante ($gte, sin tope superior); se ordena
-  // ascendente y se toma el primero, o sea el más cercano a ese punto de
-  // partida. Si no hay evento para hoy/ayer, esto devolverá el próximo
-  // evento futuro que exista en la base — si prefieren null en ese caso en
-  // vez del próximo evento, hay que agregar también un $lt con el fin de
-  // ese mismo día.
   const eventSelected = await Event.findOne({
-    date: { $gte: inicioDelDia },
+    businessDate: businessDateUtc,
+    timeZone,
+    closeAt: { $gt: now },
   })
-    .sort({ date: 1 })
-    .lean<{ date: Date, closedAt: Date }>()
+    .sort({ startsAt: 1 })
+    .lean<{
+      _id: string
+      name: string
+      businessDate: Date
+      timeZone: string
+      startsAt: Date
+      listClosedAt: Date
+      closeAt: Date
+    }>()
 
-  if(!eventSelected) {
-    return NextResponse.json({ ok: true, event: null }, { status: 200 })
+  if (!eventSelected) {
+    return NextResponse.json(
+      {
+        ok: true,
+        event: null,
+        businessDate,
+      },
+      { status: 200 }
+    )
   }
 
-  const cierre = moment(eventSelected.date).add(1, "day").hour(5).minute(0);
-  if(cierre.isBefore(moment())) {
-    return NextResponse.json({ ok: true, event: null }, { status: 200 })
-  }
-
-  return NextResponse.json({ ok: true, event: eventSelected }, { status: 200 })
+  return NextResponse.json(
+    {
+      ok: true,
+      event: {
+        ...eventSelected,
+        businessDate: eventSelected.businessDate
+          .toISOString()
+          .slice(0, 10),
+      },
+      businessDate,
+    },
+    { status: 200 }
+  )
 }

@@ -5,20 +5,21 @@ import { useRouter } from "next/navigation";
 import { BiParty } from "react-icons/bi";
 import Link from "next/link";
 import { FaPlus } from "react-icons/fa6";
-import moment from "moment";
 import {
+  EVENT_TIME_ZONE,
   getEventCountdownStart,
-  getEventProCloseAt,
 } from "@/lib/eventClose";
 
 interface EventData {
   _id: string;
   name: string;
-  date: string;
+  businessDate: string;
+  startsAt?: string;
   total: number;
   arrives: number;
-  closedAt: string;
-  isActive: boolean;
+  listClosedAt: string;
+  closeAt: string;
+  timeZone?: string;
 }
 
 interface SessionUser {
@@ -31,30 +32,43 @@ interface EventsListProps {
 }
 
 function formatDate(date: string) {
+  const [year, month, day] = date.slice(0, 10).split("-").map(Number);
+  const businessDate = new Date(Date.UTC(year, month - 1, day, 12));
+
   return new Intl.DateTimeFormat("es-CL", {
     weekday: "short",
     day: "2-digit",
     month: "short",
     year: "2-digit",
+    timeZone: "UTC",
+  }).format(businessDate);
+}
+
+function formatEventTime(date: string) {
+  return new Intl.DateTimeFormat("es-CL", {
+    timeZone: EVENT_TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
   }).format(new Date(date));
 }
 
 const EVENTS_REFRESH_INTERVAL = 10_000;
 
 function EventCountdown({
-  date,
+  businessDate,
+  startsAt,
   closedAt,
-  isPro,
 }: {
-  date: string;
+  businessDate: string;
+  startsAt?: string;
   closedAt: string;
-  isPro: boolean;
 }) {
   const [now, setNow] = useState<number | null>(null);
-  const startAt = getEventCountdownStart(date)?.getTime();
-  const endAt = isPro
-    ? getEventProCloseAt(date)?.getTime()
-    : new Date(closedAt).getTime();
+  const startAt = startsAt
+    ? new Date(startsAt).getTime()
+    : getEventCountdownStart(businessDate)?.getTime();
+  const endAt = new Date(closedAt).getTime();
 
   useEffect(() => {
     if (
@@ -168,8 +182,6 @@ export default function EventsList({
 
   const isNeo = user.role === "NEO";
   const isAdmin = isNeo || user.role === "ADMINISTRADOR";
-  const isPro = user.role === "LISTERO_PRO";
-
   useEffect(() => {
     loadEvents();
 
@@ -430,16 +442,20 @@ export default function EventsList({
                   </h2>
 
                   <span className="block text-2xl text-gray-200">
-                    {formatDate(event.date)}
+                    {formatDate(event.businessDate)}
                   </span>
 
                   <span className="text-lg font-normal text-gray-400">
                       Asisten <span className="text-cyan-400">{event.arrives || 0}</span> de {event.total || 0}</span>
 
-                  <p className="text-md font-normal text-gray-400">Cierre de lista: <b>{isPro ? "12:30 am" : moment(event.closedAt).format("HH:mm")}</b></p>
+                  <p className="text-md font-normal text-gray-400">Cierre de lista: <b>{formatEventTime(event.listClosedAt)}</b></p>
                   {(!canImport && index === 0) &&  <p className="text-orange-400">📢 Ya no se puede importar más</p>}
                   {index === 0 && (
-                    <EventCountdown date={event.date} closedAt={event.closedAt} isPro={isPro} />
+                  <EventCountdown
+                    businessDate={event.businessDate}
+                    startsAt={event.startsAt}
+                    closedAt={event.listClosedAt}
+                  />
                   )}
 
                 </div>
@@ -476,7 +492,7 @@ export default function EventsList({
                     📥 Importar
                   </button>}                  
 
-                  {isAdmin && new Date(event.closedAt) >= new Date(event.closedAt) && (
+                  {isAdmin && new Date(event.closeAt) >= new Date(event.listClosedAt) && (
                     <button
                       type="button"
                       onClick={() =>

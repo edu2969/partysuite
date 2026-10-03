@@ -4,10 +4,10 @@ import Event from "@/models/event";
 import { auth } from "@/app/utils/auth";
 import User from "@/models/user";
 import BILista from "@/models/biLista"
-import moment from "moment";
 import {
-  EVENT_CLOSE_LIMIT_MESSAGE,
-  isEventCloseWithinDeadline,
+  EVENT_TIME_ZONE,
+  getEventCountdownStart,
+  getEventSchedule,
 } from "@/lib/eventClose";
 
 export async function GET() {
@@ -29,7 +29,7 @@ export async function GET() {
     }
 
     const events = await Event.find({})
-      .sort({ date: -1 })
+      .sort({ businessDate: -1, startsAt: -1 })
       .limit(10)
       .lean();
       
@@ -43,16 +43,27 @@ export async function GET() {
     });
 
     const primerEvento = events[0];
-    const ahora = moment();
-    const canImport = (!biReg || (biReg.inscritos < userData.maxAttendersByEvent)) && ahora.isBefore(primerEvento.closedAt);
+    const ahora = new Date();
+    const canImport = (!biReg || (biReg.inscritos < userData.maxAttendersByEvent)) && ahora < new Date(primerEvento.listClosedAt);
 
     return NextResponse.json({
       ok: true,
-      events: events.map(event => ({
-        ...event,
-        canImport: ahora.isBefore(event.closedAt) && (!biReg || (biReg.inscritos < userData.maxAttendersByEvent)),
-        isActive: ahora.isBefore(event.closedAt) && ahora.isAfter(event.date)
-      })),
+      events: events.map((event) => {
+        const eventStart =
+          event.startsAt ?? getEventCountdownStart(event.businessDate);
+
+        return {
+          ...event,
+          businessDate: event.businessDate.toISOString().slice(0, 10),
+          canImport: ahora < new Date(event.listClosedAt) &&
+            (!biReg || (biReg.inscritos < userData.maxAttendersByEvent)),
+          isActive: Boolean(
+            eventStart &&
+            ahora >= eventStart &&
+            ahora < new Date(event.closeAt)
+          ),
+        };
+      }),
       canImport
     }, { status: 200 });
   } catch (error) {
@@ -74,11 +85,20 @@ export async function POST(req: NextRequest) {
 
   const {
     name,
-    date,
-    closedAt
+    businessDate,
+    startTime,
+    listCloseTime,
+    closeTime,
   } = await req.json();
 
-  if (!date || !name || !closedAt) {
+  if (
+    typeof name !== "string" ||
+    !name.trim() ||
+    typeof businessDate !== "string" ||
+    typeof startTime !== "string" ||
+    typeof listCloseTime !== "string" ||
+    typeof closeTime !== "string"
+  ) {
     return NextResponse.json(
       {
         ok: false,
@@ -88,19 +108,28 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (!isEventCloseWithinDeadline(date, closedAt)) {
+  const schedule = getEventSchedule(
+    businessDate,
+    startTime,
+    listCloseTime,
+    closeTime
+  );
+
+  if (!schedule.ok) {
     return NextResponse.json(
-      { ok: false, message: EVENT_CLOSE_LIMIT_MESSAGE },
+      { ok: false, message: schedule.message },
       { status: 400 }
     );
   }
 
   const event = await Event.create({
     userId: session.user.id,
-    createdAt: new Date(),
-    date,
-    closedAt,
-    name,
+    businessDate: schedule.businessDate,
+    startsAt: schedule.startsAt,
+    timeZone: EVENT_TIME_ZONE,
+    listClosedAt: schedule.listClosedAt,
+    closeAt: schedule.closeAt,
+    name: name.trim(),
     arrives: 0,
     total: 0,
     averageCheckTime: 0

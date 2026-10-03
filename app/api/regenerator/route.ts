@@ -6,6 +6,11 @@ import Event from "@/models/event";
 import Attender from "@/models/attender";
 import BILista from "@/models/biLista";
 import Guest from "@/models/guest";
+import {
+    DEFAULT_TIME_ZONE,
+    getBusinessDateForDate,
+} from "@/lib/businessTime";
+import { getEventCloseDeadline } from "@/lib/eventClose";
 
 export async function GET(req: NextRequest) {
     try {
@@ -41,6 +46,10 @@ export async function GET(req: NextRequest) {
 
         if (action === "bilistas") {
             return await reconstruirBIListas();
+        }
+
+        if (action === "events") {
+            return await eventsRefactor();
         }
 
         return NextResponse.json(
@@ -426,5 +435,95 @@ const reconstruirBIListas = async () => {
 
         eventsReset:
             eventsWithoutAttenders.length,
+    });
+};
+
+const eventsRefactor = async () => {
+    const events = await Event.collection
+        .find(
+            {},
+            {
+                projection: {
+                    _id: 1,
+                    date: 1,
+                    closedAt: 1,
+                    businessDate: 1,
+                    listClosedAt: 1,
+                },
+            }
+        )
+        .toArray();
+
+    const migrations = events.map((event) => {
+        const legacyDate = event.date ?? event.businessDate;
+        const parsedDate = legacyDate
+            ? new Date(legacyDate)
+            : null;
+
+        if (!parsedDate || Number.isNaN(parsedDate.getTime())) {
+            throw new Error(
+                `El evento ${event._id} no tiene una fecha válida para migrar`
+            );
+        }
+
+        const businessDate = event.date
+            ? getBusinessDateForDate(parsedDate, DEFAULT_TIME_ZONE)
+            : parsedDate.toISOString().slice(0, 10);
+
+        const listClosedAtValue =
+            event.closedAt ?? event.listClosedAt;
+        const listClosedAt = listClosedAtValue
+            ? new Date(listClosedAtValue)
+            : null;
+
+        if (!listClosedAt || Number.isNaN(listClosedAt.getTime())) {
+            throw new Error(
+                `El evento ${event._id} no tiene una hora de cierre de lista válida para migrar`
+            );
+        }
+
+        const businessDateAtNoonUtc = new Date(
+            `${businessDate}T12:00:00.000Z`
+        );
+        const closeAt = getEventCloseDeadline(businessDateAtNoonUtc);
+
+        if (!closeAt) {
+            throw new Error(
+                `No fue posible calcular el cierre del evento ${event._id}`
+            );
+        }
+
+        return {
+            updateOne: {
+                filter: { _id: event._id },
+                update: {
+                    $set: {
+                        businessDate: new Date(
+                            `${businessDate}T00:00:00.000Z`
+                        ),
+                        timeZone: DEFAULT_TIME_ZONE,
+                        listClosedAt,
+                        closeAt,
+                    },
+                    $unset: {
+                        date: "",
+                        closedAt: "",
+                        isActive: "",
+                    },
+                },
+            },
+        };
+    });
+
+    const result = migrations.length
+        ? await Event.collection.bulkWrite(migrations)
+        : null;
+
+    return NextResponse.json({
+        ok: true,
+        message: "Eventos migrados correctamente",
+        timeZone: DEFAULT_TIME_ZONE,
+        events: events.length,
+        updated: result?.modifiedCount ?? 0,
     });
 };

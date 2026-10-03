@@ -1,13 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
+
 import { connectMongoDB } from "@/lib/mongodb";
-import { getEventDayRange, listaCerrada } from "@/lib/eventDay";
-import { horaNocturna } from "@/lib/time";
+
 import Event from "@/models/event";
 import Guest from "@/models/guest";
 import Attender from "@/models/attender";
 import User from "@/models/user";
 import BILista from "@/models/biLista";
+
 import { auth } from "@/app/utils/auth";
+
+import {
+  DEFAULT_TIME_ZONE,
+  getCurrentBusinessDate,
+  isDateClosed,
+} from "@/lib/businessTime";
+
+import { horaNocturna } from "@/lib/time";
 
 interface RegisterArrivalRequest {
   rut: string;
@@ -25,7 +34,8 @@ export async function POST(request: NextRequest) {
         {
           danger: [
             {
-              item: "Se perdió la sesión. Por favor, autentíquese nuevamente",
+              item:
+                "Se perdió la sesión. Por favor, autentíquese nuevamente",
             },
           ],
         },
@@ -46,7 +56,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body: RegisterArrivalRequest = await request.json();
+    const body: RegisterArrivalRequest =
+      await request.json();
 
     const rut = body.rut?.trim();
     const banned = body.dudosa === true;
@@ -64,26 +75,43 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Mismo criterio que GET /api/events/current: antes de las 5am, el
-    // evento "de hoy" en términos de negocio sigue siendo el de ayer (la
-    // fiesta sigue funcionando pasada la medianoche). Antes esto solo
-    // buscaba dentro del día calendario actual, así que fallaba en la
-    // madrugada — ahora usa el mismo helper que /current.
-    const { desde, hasta } = getEventDayRange();
+    /*
+     * ============================================================
+     * 1. DETERMINAR EL EVENTO ACTUAL
+     * ============================================================
+     *
+     * La fecha de negocio NO depende de la timezone del servidor.
+     *
+     * Antes de las 05:00 Chile:
+     *     pertenece al evento de la noche anterior.
+     *
+     * Desde las 05:00:
+     *     pertenece al día actual.
+     */
 
-    const evnt = await Event.findOne({
-      date: {
-        $gte: desde,
-        $lt: hasta,
-      },
-    });
+    const timeZone = DEFAULT_TIME_ZONE;
 
-    if (!evnt) {
+    const businessDate =
+      getCurrentBusinessDate(timeZone);
+
+    const event = await Event.findOne({
+      businessDate: new Date(`${businessDate}T00:00:00.000Z`),
+      timeZone,
+    })
+      .sort({ startsAt: 1 })
+      .lean<{
+        _id: string;
+        closeAt?: Date | null;
+        arrives: number;
+        averageCheckTime?: number | Date | null;
+      }>();
+
+    if (!event) {
       return NextResponse.json(
         {
           danger: [
             {
-              item: "No existe un evento para hoy",
+              item: "No existe un evento para este horario",
             },
           ],
         },
@@ -91,16 +119,51 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Si la hora de cierre ya pasó, se corta acá antes de tocar invitados/asistencia.
-    if (listaCerrada(evnt)) {
+    /*
+     * ============================================================
+     * 2. VALIDAR CIERRE DEL EVENTO
+     * ============================================================
+     *
+     * closeAt es un instante absoluto almacenado en UTC.
+     *
+     * No necesitamos convertirlo a Chile para compararlo.
+     */
+
+    const closeAt = event.closeAt
+      ? new Date(event.closeAt)
+      : null;
+
+    if (!closeAt || Number.isNaN(closeAt.getTime())) {
+      console.error(
+        `El evento ${event._id} no tiene un closeAt válido`
+      );
+      return NextResponse.json(
+        {
+          danger: [
+            {
+              item: "El evento no tiene configurada una hora de término válida",
+            },
+          ],
+        },
+        { status: 500 }
+      );
+    }
+
+    if (isDateClosed(closeAt)) {
       return NextResponse.json({
         danger: [
           {
-            item: "La lista ha cerrado. Lo sentimos",
+            item: "El evento ya ha cerrado",
           },
         ],
       });
     }
+
+    /*
+     * ============================================================
+     * 4. BUSCAR INVITADO
+     * ============================================================
+     */
 
     const guest = await Guest.findOne({
       rut: rut.slice(0, -1),
@@ -116,8 +179,14 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    /*
+     * ============================================================
+     * 5. BUSCAR INSCRIPCIÓN DEL INVITADO EN ESTE EVENTO
+     * ============================================================
+     */
+
     const attender = await Attender.findOne({
-      eventId: evnt._id,
+      eventId: event._id,
       guestId: guest._id,
     });
 
@@ -130,6 +199,12 @@ export async function POST(request: NextRequest) {
         ],
       });
     }
+
+    /*
+     * ============================================================
+     * 6. MARCAR COMO DUDOSA / BANNED
+     * ============================================================
+     */
 
     if (banned) {
       await Guest.updateOne(
@@ -156,7 +231,16 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    if (attender.checktime !== null && attender.checktime !== undefined) {
+    /*
+     * ============================================================
+     * 7. CHECK-IN YA REALIZADO
+     * ============================================================
+     */
+
+    if (
+      attender.checktime !== null &&
+      attender.checktime !== undefined
+    ) {
       return NextResponse.json({
         danger: [
           {
@@ -165,62 +249,151 @@ export async function POST(request: NextRequest) {
             )}`,
           },
         ],
+        checktime: new Date(attender.checktime).toISOString(),
       });
     }
 
-    const listero = await User.findById(attender.userId).lean<{ name: string }>();
+    /*
+     * ============================================================
+     * 8. USUARIO / RP QUE REGISTRÓ LA INSCRIPCIÓN
+     * ============================================================
+     */
 
-    const nombreRP = listero?.name || "Sin RP";
+    const listero =
+      await User.findById(attender.userId)
+        .lean<{ name: string }>();
 
-    // checktime es una FECHA real (momento absoluto del check-in), no un
-    // offset desde el inicio del día. Antes se guardaba `Date.now()` y se
-    // trataba como si fuera un offset — con eso, horaNocturna calculaba
-    // horas:minutos a partir de un epoch completo en vez de una duración,
-    // dando resultados sin sentido. El fix real está en horaNocturna()
-    // (lib/time.ts), que ahora normaliza con `new Date(valor)` en vez de
-    // asumir un offset; el import y el nombre de la función no cambiaron.
+    const nombreRP =
+      listero?.name || "Sin RP";
+
+    /*
+     * ============================================================
+     * 9. INSTANTE ABSOLUTO DEL CHECK-IN
+     * ============================================================
+     *
+     * MongoDB guarda esto como Date.
+     *
+     * No se guarda:
+     *   - hora Chile
+     *   - offset
+     *   - segundos desde medianoche
+     *
+     * Se guarda el instante real.
+     */
+
     const checktime = new Date();
-    const checktimeMs = checktime.getTime();
 
-    // El promedio SÍ se puede calcular directo sobre epoch-ms (a
-    // diferencia de promediar horas del reloj, que se rompe con el cruce
-    // de medianoche): el tiempo absoluto no da "vueltas", así que el
-    // promedio de timestamps es en sí mismo un timestamp válido y
-    // representativo. Se extrae `.getTime()` de ambos operandos para la
-    // aritmética y se vuelve a envolver en Date recién al guardar.
-    const previousArrives = evnt.arrives || 0;
-    const previousAverageMs = evnt.averageCheckTime
-      ? new Date(evnt.averageCheckTime).getTime()
-      : 0;
-
-    const averageCheckTimeMs =
-      (checktimeMs + previousArrives * previousAverageMs) /
-      (previousArrives + 1);
-
-    const averageCheckTime = new Date(averageCheckTimeMs);
-
-    const attenderUpdate = await Attender.updateOne(
-      {
-        _id: attender._id
-      },
-      {
-        $set: {
-          checktime,
-        },
-      }
-    );
-
-    if (attenderUpdate.matchedCount === 0) {
+    if (checktime.getTime() >= closeAt.getTime()) {
       return NextResponse.json({
         danger: [
           {
-            item: `${guest.names} ya ingresó ${horaNocturna(
-              attender.checktime ?? checktime
-            )}`,
+            item: "El evento ya ha cerrado",
           },
         ],
       });
     }
+
+    const checktimeMs =
+      checktime.getTime();
+
+    /*
+     * ============================================================
+     * 10. PROMEDIO DE HORA DE INGRESO
+     * ============================================================
+     */
+
+    const previousArrives =
+      event.arrives || 0;
+
+    const previousAverageMs =
+      event.averageCheckTime
+        ? new Date(
+            event.averageCheckTime
+          ).getTime()
+        : 0;
+
+    const averageCheckTimeMs =
+      previousArrives === 0
+        ? checktimeMs
+        : (
+            checktimeMs +
+            previousArrives *
+              previousAverageMs
+          ) /
+          (previousArrives + 1);
+
+    const averageCheckTime =
+      new Date(averageCheckTimeMs);
+
+    /*
+     * ============================================================
+     * 11. CHECK-IN ATÓMICO
+     * ============================================================
+     *
+     * MUY IMPORTANTE:
+     *
+     * No hacemos:
+     *
+     *   findOne()
+     *   ...
+     *   updateOne({ _id })
+     *
+     * porque dos lectores podrían procesar
+     * al mismo invitado simultáneamente.
+     *
+     * El filtro checktime: null garantiza que
+     * solamente uno pueda ganar.
+     */
+
+    const attenderUpdate =
+      await Attender.updateOne(
+        {
+          _id: attender._id,
+          checktime: null,
+        },
+        {
+          $set: {
+            checktime,
+          },
+        }
+      );
+
+    if (attenderUpdate.matchedCount === 0) {
+      /*
+       * Otro proceso/lector registró el ingreso
+       * entre nuestro findOne() y este update.
+       */
+
+      const currentAttender =
+        await Attender.findById(
+          attender._id
+        ).lean<{
+          checktime?: Date | null;
+        }>();
+
+      return NextResponse.json({
+        danger: [
+          {
+            item: `${guest.names} ya ingresó ${
+              currentAttender?.checktime
+                ? horaNocturna(
+                    currentAttender.checktime
+                  )
+                : ""
+            }`,
+          },
+        ],
+        checktime: currentAttender?.checktime
+          ? new Date(currentAttender.checktime).toISOString()
+          : undefined,
+      });
+    }
+
+    /*
+     * ============================================================
+     * 12. ACTUALIZAR INVITADO
+     * ============================================================
+     */
 
     await Guest.updateOne(
       {
@@ -231,37 +404,42 @@ export async function POST(request: NextRequest) {
           arrives: 1,
         },
         $set: {
-          ratio: (guest.arrives + 1) / guest.inscriptions,
+          ratio:
+            (guest.arrives + 1) /
+            guest.inscriptions,
         },
       }
     );
 
-    const eventUpdate: {
-      $inc: {
-        arrives: number;
-      };
-      $set: {
-        averageCheckTime: Date;
-      };
-    } = {
-      $inc: {
-        arrives: 1,
-      },
-      $set: {
-        averageCheckTime,
-      },
-    };
+    /*
+     * ============================================================
+     * 13. ACTUALIZAR EVENTO
+     * ============================================================
+     */
 
     await Event.updateOne(
       {
-        _id: evnt._id,
+        _id: event._id,
       },
-      eventUpdate
+      {
+        $inc: {
+          arrives: 1,
+        },
+        $set: {
+          averageCheckTime,
+        },
+      }
     );
+
+    /*
+     * ============================================================
+     * 14. ACTUALIZAR BI DE LISTA
+     * ============================================================
+     */
 
     await BILista.updateOne(
       {
-        eventId: evnt._id,
+        eventId: event._id,
         userId: attender.userId,
       },
       {
@@ -271,23 +449,36 @@ export async function POST(request: NextRequest) {
       }
     );
 
-    const bienvenida = `Bienvenid@ ${guest.names}`;
+    /*
+     * ============================================================
+     * 15. RESPUESTA
+     * ============================================================
+     */
+
+    const bienvenida =
+      `Bienvenid@ ${guest.names}`;
 
     return NextResponse.json({
       success: [
         {
-          item: `${bienvenida} (RP: ${nombreRP})`,
+          item:
+            `${bienvenida} (RP: ${nombreRP})`,
         },
       ],
+      checktime: checktime.toISOString(),
     });
   } catch (error) {
-    console.error("RegistrarIngreso:", error);
+    console.error(
+      "RegistrarIngreso:",
+      error
+    );
 
     return NextResponse.json(
       {
         danger: [
           {
-            item: "Ocurrió un error al registrar el ingreso",
+            item:
+              "Ocurrió un error al registrar el ingreso",
           },
         ],
       },
