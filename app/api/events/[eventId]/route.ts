@@ -8,6 +8,7 @@ import User from "@/models/user";
 import Attender from "@/models/attender";
 import {
   EVENT_TIME_ZONE,
+  getEventImportDeadline,
   getEventSchedule,
 } from "@/lib/eventClose";
 
@@ -29,7 +30,16 @@ export async function GET(
 
     const { eventId } = await params;
     const userId = session.user.id;
-    const userData = await User.findById(userId).select("maxAttendersByEvent");
+    const userData = await User.findById(userId).select(
+      "role maxAttendersByEvent maxImportTime"
+    );
+    if (!userData) {
+      return NextResponse.json(
+        { message: "Usuario no encontrado" },
+        { status: 404 }
+      );
+    }
+
     const cantidadInscritos = await Attender.countDocuments({
       userId,
       eventId
@@ -41,6 +51,8 @@ export async function GET(
         name: string;
         businessDate: Date;
         startsAt: Date;
+        listClosedAt: Date;
+        closeAt: Date;
       }>();
 
     if (!event) {
@@ -50,10 +62,19 @@ export async function GET(
       );
     }
 
+    const importDeadline = getEventImportDeadline(
+      event.businessDate,
+      event.listClosedAt,
+      userData.role === "LISTERO_PRO",
+      event.closeAt,
+      userData.maxImportTime
+    );
+
     return NextResponse.json({ ok: true, event: {
       ...event,
       businessDate: event.businessDate.toISOString().slice(0, 10),
       maxImport: userData.maxAttendersByEvent,
+      importDeadline: importDeadline?.toISOString() ?? null,
       actualImported: cantidadInscritos
     }}, { status: 200 });
   } catch (error) {

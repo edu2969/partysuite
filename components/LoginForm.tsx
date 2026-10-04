@@ -100,14 +100,7 @@ export default function LoginForm() {
             <div className="mt-4 text-center">
               <h1 className="text-4xl font-semibold tracking-tight text-gray-200">
                 PartySuite
-                <span className="ml-2 align-middle text-xs font-normal text-gray-400">
-                  v2.0
-                </span>
               </h1>
-
-              <p className="mt-2 text-sm text-gray-400">
-                Gestión de eventos y acceso
-              </p>
             </div>
           </div>
 

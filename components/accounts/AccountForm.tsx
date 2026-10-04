@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { FaSave, FaUserEdit } from "react-icons/fa";
 import { FiLoader } from "react-icons/fi";
+import { isValidProImportTime } from "@/lib/eventClose";
 
 interface Account {
     _id?: string;
@@ -13,6 +14,7 @@ interface Account {
     email: string;
     role: "ADMINISTRADOR" | "PORTERIA" | "LISTERO" | "NEO" | "LISTERO_PRO" | "ELIMINADO",
     maxAttendersByEvent: number;
+    maxImportTime?: string;
 }
 
 interface Props {
@@ -28,6 +30,7 @@ interface FormData {
     repassword: string;
     isPro: boolean;
     maxAttendersByEvent: number;
+    maxImportTime: string;
 }
 
 async function fetchAccount(accountId: string): Promise<Account> {
@@ -39,9 +42,6 @@ async function fetchAccount(accountId: string): Promise<Account> {
     return response.account;
 }
 
-// Nota: igual que el código original, esto NO revisa `resp.ok` en los PUT/POST
-// de guardado (solo fallaría ante un error de red). Si quieres que un 4xx/5xx
-// también dispare onError, agrega `if (!res.ok) throw new Error()` en cada uno.
 async function saveAccount({
     accountId,
     account,
@@ -52,7 +52,7 @@ async function saveAccount({
     data: FormData;
 }) {
     if (!account) {
-        await fetch("/api/accounts", {
+        const response = await fetch("/api/accounts", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -60,9 +60,14 @@ async function saveAccount({
                 email: data.email,
                 role: data.isPro ? "LISTERO_PRO" : "LISTERO",
                 password: data.password,
-                maxAttendersByEvent: data.maxAttendersByEvent
+                maxAttendersByEvent: data.maxAttendersByEvent,
+                ...(data.isPro ? { maxImportTime: data.maxImportTime } : {}),
             }),
         });
+        if (!response.ok) {
+            const result = await response.json();
+            throw new Error(result.message || "No fue posible guardar la cuenta.");
+        }
         return;
     }
 
@@ -73,22 +78,28 @@ async function saveAccount({
         role: string;
         password?: string;
         maxAttendersByEvent: number;
+        maxImportTime?: string;
     } = {
         _id: accountId,
         name: data.name,
         email: data.email,
         role: data.isPro ? "LISTERO_PRO" : "LISTERO",
-        maxAttendersByEvent: data.maxAttendersByEvent
+        maxAttendersByEvent: data.maxAttendersByEvent,
+        ...(data.isPro ? { maxImportTime: data.maxImportTime } : {}),
     };
     if (data.repassword) {
         payload.password = data.password;
     }
 
-    await fetch(`/api/accounts/${account._id}`, {
+    const response = await fetch(`/api/accounts/${account._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
     });
+    if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || "No fue posible guardar la cuenta.");
+    }
 }
 
 export default function AccountForm({
@@ -109,7 +120,8 @@ export default function AccountForm({
             password: "",
             repassword: "",
             isPro: false,
-            maxAttendersByEvent: 0
+            maxAttendersByEvent: 500,
+            maxImportTime: "00:30",
         },
     });
 
@@ -135,7 +147,8 @@ export default function AccountForm({
             password: "",
             repassword: "",
             isPro: account.role === "LISTERO_PRO",
-            maxAttendersByEvent: account.maxAttendersByEvent
+            maxAttendersByEvent: account.maxAttendersByEvent,
+            maxImportTime: account.maxImportTime || "00:30",
         });
     }, [account, reset]);
 
@@ -149,8 +162,10 @@ export default function AccountForm({
         onSuccess: () => {
             router.push("/manager");
         },
-        onError: () => {
-            setError("No fue posible guardar la cuenta.");
+        onError: (mutationError) => {
+            setError(mutationError instanceof Error
+                ? mutationError.message
+                : "No fue posible guardar la cuenta.");
         },
     });
 
@@ -175,6 +190,10 @@ export default function AccountForm({
         setError("");
         if (data.repassword !== "" && data.password !== data.repassword) {
             setError("El password y su verificación deben coincidir.");
+            return;
+        }
+        if (data.isPro && !isValidProImportTime(data.maxImportTime)) {
+            setError("La hora máxima debe ser posterior a las 23:30 o anterior a las 05:00.");
             return;
         }
         saveMutation.mutate(data);
@@ -242,7 +261,7 @@ export default function AccountForm({
 
                         <div>
                             <label className="block mb-2 text-cyan-300">
-                                Password
+                                Password {account ? "nuevo" : "inicial"}
                             </label>
                             <input
                                 type="password"
@@ -265,21 +284,26 @@ export default function AccountForm({
                     </div>
                     
 
-                    <div className="grid grid-cols-2 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-8">
 
-                        <div>
+                        <div className="md:col-span-2">
                             <label className="block mb-2 text-cyan-300">
                                 Máx. invitados/evento
                             </label>
                             <input
                                 type="number"
-                                {...register("maxAttendersByEvent", { valueAsNumber: true })}
-                                className="w-full rounded-lg bg-white/10 border border-cyan-400/20 p-3 text-white"
+                                min={1}
+                                disabled={!isProCheck}
+                                {...register("maxAttendersByEvent", {
+                                    valueAsNumber: true,
+                                    min: 1,
+                                })}
+                                className="w-full rounded-lg bg-white/10 border border-cyan-400/20 p-3 text-white disabled:opacity-50"
                             />
                         </div>
 
                         {(roleSelected === "LISTERO" || roleSelected === "LISTERO_PRO") && (
-                            <div>
+                            <div className="md:col-span-3 flex items-center">
                                 <div className="flex space-x-3 items-center">
                                     <input
                                         type="checkbox"
@@ -292,11 +316,29 @@ export default function AccountForm({
                                                 {isProCheck ? 'es PRO' : 'no es PRO'}
                                             </p>
                                             <p className={`${isProCheck ? 'text-cyan-800' : 'text-neutral-500'} text-md ml-2`}>
-                                                <b>{isProCheck ? 'Su lista cierra a las 12:30 am' : 'Su lista cierra según el evento'}</b>
+                                                <b>{isProCheck ? 'Límite de importación personalizado' : 'Cierre según el evento'}</b>
                                             </p>
                                         </div>
                                     </label>
                                 </div>
+                            </div>
+                        )}
+
+                        {isProCheck && (
+                            <div className="md:col-span-3">
+                                <label className="mb-2 block text-cyan-300">
+                                    Hora máxima de importación
+                                </label>
+                                <input
+                                    type="time"
+                                    step={60}
+                                    disabled={saveMutation.isPending}
+                                    {...register("maxImportTime")}
+                                    className="w-full rounded-lg bg-white/10 border border-cyan-400/20 p-3 text-white"
+                                />
+                                <p className="mt-1 text-xs text-neutral-400">
+                                    Entre 23:31 y 23:59 del evento, o 00:00 y 04:59 del día siguiente.
+                                </p>
                             </div>
                         )}
                     </div>

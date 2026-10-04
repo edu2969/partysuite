@@ -7,6 +7,7 @@ import BILista from "@/models/biLista"
 import {
   EVENT_TIME_ZONE,
   getEventCountdownStart,
+  getEventImportDeadline,
   getEventSchedule,
 } from "@/lib/eventClose";
 
@@ -23,7 +24,11 @@ export async function GET() {
 
     await connectMongoDB();
     const userId = session.user.id;
-    const userData = await User.findById(userId);
+    const userData = await User.findById(userId).lean<{
+      role: string;
+      maxAttendersByEvent: number;
+      maxImportTime?: string;
+    }>();
     if(!userData) {
       return NextResponse.json({ ok: false, error: "No se encuentra al usuario" })
     }
@@ -37,26 +42,60 @@ export async function GET() {
       return NextResponse.json({ ok: true, events: [], canImport: true }, { status: 200 });
     }
       
-    const biReg = await BILista.findOne({
-      userId,
-      eventId: events[0]._id
-    });
-
-    const primerEvento = events[0];
     const ahora = new Date();
-    const canImport = (!biReg || (biReg.inscritos < userData.maxAttendersByEvent)) && ahora < new Date(primerEvento.listClosedAt);
+    const biRegs = await BILista.find({
+      userId,
+      eventId: { $in: events.map((event) => event._id) },
+    }).lean();
+    const registrationsByEvent = new Map(
+      biRegs.map((registration) => [
+        String(registration.eventId),
+        registration.inscritos,
+      ])
+    );
+
+    const importStatusByEvent = new Map<
+      string,
+      { canImport: boolean; importDeadline: string | null }
+    >(
+      events.map((event) => {
+        const deadline = getEventImportDeadline(
+          event.businessDate,
+          event.listClosedAt,
+          userData.role === "LISTERO_PRO",
+          event.closeAt,
+          userData.maxImportTime
+        );
+        const inscritos = registrationsByEvent.get(String(event._id)) ?? 0;
+
+        return [
+          String(event._id),
+          {
+            canImport: Boolean(
+              deadline &&
+              ahora < deadline &&
+              inscritos < userData.maxAttendersByEvent
+            ),
+            importDeadline: deadline?.toISOString() ?? null,
+          },
+        ];
+      })
+    );
+    const canImport =
+      importStatusByEvent.get(String(events[0]._id))?.canImport ?? false;
 
     return NextResponse.json({
       ok: true,
       events: events.map((event) => {
         const eventStart =
           event.startsAt ?? getEventCountdownStart(event.businessDate);
+        const importStatus = importStatusByEvent.get(String(event._id));
 
         return {
           ...event,
           businessDate: event.businessDate.toISOString().slice(0, 10),
-          canImport: ahora < new Date(event.listClosedAt) &&
-            (!biReg || (biReg.inscritos < userData.maxAttendersByEvent)),
+          canImport: importStatus?.canImport ?? false,
+          importDeadline: importStatus?.importDeadline ?? null,
           isActive: Boolean(
             eventStart &&
             ahora >= eventStart &&

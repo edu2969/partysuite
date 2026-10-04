@@ -3,10 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  getEventCountdownStart,
-  getEventImportDeadline,
-} from "@/lib/eventClose";
+import { getEventCountdownStart } from "@/lib/eventClose";
 
 interface EventData {
   _id: string;
@@ -15,6 +12,7 @@ interface EventData {
   startsAt?: string;
   listClosedAt: string;
   closeAt: string;
+  importDeadline: string | null;
   maxImport: number;
   actualImported: number;
 }
@@ -32,7 +30,6 @@ interface ImportMessages {
 
 interface AttendersImportProps {
   eventId: string;
-  isPro: boolean;
 }
 
 function formatCountdown(milliseconds: number) {
@@ -48,7 +45,6 @@ function formatCountdown(milliseconds: number) {
 
 export default function AttendersImport({
   eventId,
-  isPro,
 }: AttendersImportProps) {
   const router = useRouter();
 
@@ -74,15 +70,9 @@ export default function AttendersImport({
     }
   })
 
-  const listDeadline = event
-    ? getEventImportDeadline(
-        event.businessDate,
-        event.listClosedAt,
-        isPro,
-        event.closeAt
-      )
-    : null;
-  const deadline = listDeadline?.getTime() ?? Number.NaN;
+  const deadline = event?.importDeadline
+    ? new Date(event.importDeadline).getTime()
+    : Number.NaN;
   const storedStart = event?.startsAt
     ? new Date(event.startsAt).getTime()
     : Number.NaN;

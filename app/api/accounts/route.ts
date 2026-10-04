@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import User from "@/models/user";
 import { connectMongoDB } from "@/lib/mongodb";
 import { auth } from "@/app/utils/auth";
+import { isValidProImportTime } from "@/lib/eventClose";
 
 // =========================
 // TYPES
@@ -130,11 +131,28 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { name, email, password, role, maxAttendersByEvent } = await req.json();
+    const {
+      name,
+      email,
+      password,
+      role,
+      maxAttendersByEvent,
+      maxImportTime,
+    } = await req.json();
 
     if (!name || !email || !password || !role) {
       return NextResponse.json(
         { message: "Datos incompletos" },
+        { status: 400 }
+      );
+    }
+
+    if (
+      role === "LISTERO_PRO" &&
+      !isValidProImportTime(maxImportTime)
+    ) {
+      return NextResponse.json(
+        { message: "La hora máxima debe ser posterior a las 23:30 o anterior a las 05:00" },
         { status: 400 }
       );
     }
@@ -158,6 +176,7 @@ export async function POST(req: NextRequest) {
       password: passwordHash,
       role,
       maxAttendersByEvent,
+      ...(role === "LISTERO_PRO" ? { maxImportTime } : {}),
     });
 
     return NextResponse.json({ ok: true, id: user._id }, { status: 201 });

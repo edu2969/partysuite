@@ -52,8 +52,9 @@ export async function POST(request: NextRequest) {
     console.log("EVENTID", eventId, userId);
 
     const userData = await User.findById(userId).lean<{
-      role: string
-      maxAttendersByEvent: number
+      role: string;
+      maxAttendersByEvent: number;
+      maxImportTime?: string;
     }>();
 
     if (!Array.isArray(entradas) || !eventId || !userData) {
@@ -106,7 +107,8 @@ export async function POST(request: NextRequest) {
         eventSelected.businessDate,
         eventSelected.listClosedAt,
         userData.role === "LISTERO_PRO",
-        eventSelected.closeAt
+        eventSelected.closeAt,
+        userData.maxImportTime
       );
 
       if (!momentoCierre) {

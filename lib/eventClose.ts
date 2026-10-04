@@ -262,14 +262,31 @@ export function getEventImportDeadline(
   businessDate: Date | string,
   listClosedAt: Date | string,
   isPro: boolean,
-  closeAt?: Date | string
+  closeAt?: Date | string,
+  maxImportTime?: string | null
 ): Date | null {
   const calendarDate = businessDate instanceof Date
     ? businessDate.toISOString().slice(0, 10)
     : businessDate;
-  const listDeadline = isPro
-    ? getEventProCloseAt(calendarDate)
-    : new Date(listClosedAt);
+  let listDeadline: Date;
+  if (isPro && maxImportTime) {
+    if (!isValidProImportTime(maxImportTime)) return null;
+
+    const isFollowingDay = maxImportTime < "05:00";
+    const deadline = getEventDateTime(
+      calendarDate,
+      maxImportTime,
+      isFollowingDay ? 1 : 0
+    );
+    if (!deadline) return null;
+    listDeadline = deadline;
+  } else if (isPro) {
+    const proDeadline = getEventProCloseAt(calendarDate);
+    if (!proDeadline) return null;
+    listDeadline = proDeadline;
+  } else {
+    listDeadline = new Date(listClosedAt);
+  }
 
   if (!listDeadline || Number.isNaN(listDeadline.getTime())) return null;
   if (!isPro || !closeAt) return listDeadline;
@@ -278,6 +295,13 @@ export function getEventImportDeadline(
   if (Number.isNaN(eventDeadline.getTime())) return null;
 
   return new Date(Math.min(listDeadline.getTime(), eventDeadline.getTime()));
+}
+
+export function isValidProImportTime(value: unknown): value is string {
+  if (typeof value !== "string" || !/^([01]\d|2[0-3]):[0-5]\d$/.test(value)) {
+    return false;
+  }
+  return value < "05:00" || value > "23:30";
 }
 
 export function getEventCloseDeadline(eventDate: Date | string): Date | null {

@@ -2,13 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { formatClock } from '@/lib/time'
-import type { EventInfo, Guest, ImportMessages } from '@/lib/types'
-import { PiWarningOctagonFill } from "react-icons/pi";
+import type { EventInfo, ImportMessages } from '@/lib/types'
 import { launchConfetti } from '@/app/utils/confeti'
-import { FaCheckCircle } from 'react-icons/fa';
 import jsQR from 'jsqr'
 import { useSoundPlayer } from "./context/SoundPlayerContext";
 import { format } from 'date-fns';
+import CheckInResultPopup, { type CheckInAction, type CheckInResult } from './CheckInResultPopup'
 
 // La API BarcodeDetector todavía no está en los tipos estándar del DOM en
 // muchas versiones de TypeScript, así que se declara mínimamente acá.
@@ -27,42 +26,33 @@ declare global {
     }
 }
 
-// Estado del popup de resultado del check-in: solo dos colores posibles
-// (verde/rojo), agrupando "danger" y "warning" bajo el mismo tratamiento
-// visual de error, tal como se pidió.
-type PopupKind = 'success' | 'error'
-interface PopupState {
-    kind: PopupKind
-    items: string[]
+interface CheckInResponse extends ImportMessages {
+    canConfirm?: boolean
 }
 
-function buildPopup(data: ImportMessages): PopupState | null {
+function buildPopup(data: CheckInResponse): CheckInResult {
     if (data.danger?.length) {
-        return { kind: 'error', items: data.danger.map((d) => d.item) }
+        return { kind: 'error', items: data.danger.map((d) => d.item), canConfirm: data.canConfirm === true }
     }
     if (data.warning?.length) {
-        return { kind: 'error', items: data.warning.map((w) => w.item) }
+        return { kind: 'error', items: data.warning.map((w) => w.item), canConfirm: data.canConfirm === true }
     }
     if (data.success?.length) {
-        return { kind: 'success', items: data.success.map((s) => s.item) }
+        return { kind: 'success', items: data.success.map((s) => s.item), canConfirm: data.canConfirm === true }
     }
-    return null
+    return { kind: 'error', items: ['No se recibió una respuesta válida'], canConfirm: false }
 }
 
 export default function Welcome2() {
     const [time, setTime] = useState('00:00:00')
     const [actualEvent, setActualEvent] = useState<EventInfo | null>(null)
-    const [guestToRegister, setGuestToRegister] = useState<Guest | false>(false)
     const [bloqueado, setBloqueado] = useState(false)
-    const [dudosa, setDudosa] = useState(false)
     const [rutValue, setRutValue] = useState('')
+    const [actionPending, setActionPending] = useState(false)
     const [cameraReady, setCameraReady] = useState(false)
     const [cameraError, setCameraError] = useState<string | null>(null)
-    const [popup, setPopup] = useState<PopupState | null>(null)
+    const [popup, setPopup] = useState<CheckInResult | null>(null)
     const { play } = useSoundPlayer();
-
-    // Equivalente al helper `noGender`
-    const noGender = !guestToRegister ? true : !guestToRegister.gender ? false : true
 
     // --- Refs para la cámara y el loop de escaneo ---
     const videoRef = useRef<HTMLVideoElement>(null)
@@ -72,6 +62,7 @@ export default function Welcome2() {
     const barcodeDetectorRef = useRef<BarcodeDetectorLike | null>(null)
     const lastFrameAtRef = useRef(0)
     const lastScanRef = useRef<{ value: string; at: number } | null>(null)
+    const pendingRutRef = useRef('')
 
     // Espejo en ref de `bloqueado`, para que el loop de escaneo (creado una
     // sola vez) siempre lea el valor más reciente sin quedar con una
@@ -111,17 +102,8 @@ export default function Welcome2() {
 
     useEffect(() => {
         setPopup(null)
-        setGuestToRegister(false)
         setBloqueado(false)
-
-        function handleWindowKeydown(e: KeyboardEvent) {
-            if (e.key === "b") {
-                document.getElementById('btn-ban')?.click()
-            }
-        }
-
-        window.addEventListener('keydown', handleWindowKeydown)
-        return () => window.removeEventListener('keydown', handleWindowKeydown)
+        bloqueadoRef.current = false
     }, [])
 
     // --- Equivalente a la función evaluar(cadena) ---
@@ -142,6 +124,8 @@ export default function Welcome2() {
     const registrarIngreso = useCallback(
         async (rut: string) => {
             setBloqueado(true);
+            bloqueadoRef.current = true
+            pendingRutRef.current = rut
 
             try {
                 const res = await fetch('/api/events/check-in', {
@@ -149,37 +133,18 @@ export default function Welcome2() {
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
-                        rut,
-                        dudosa,
-                    }),
+                    body: JSON.stringify({ rut }),
                 });
 
-                const data = (await res.json()) as ImportMessages;
+                const data = (await res.json()) as CheckInResponse;
 
                 setRutValue('');
-                setGuestToRegister(false);
-
-                if (data?.success?.length) {
-                    play('/sounds/accept.mp3')
-                    launchConfetti({
-                        count: 180,
-                        duration: 2600,
-                        spread: 240,
-                    });
-                } else {
-                    play('/sounds/error.mp3')
-                }
 
                 const nextPopup = buildPopup(data)
                 setPopup(nextPopup)
 
-                // Si por alguna razón el check-in no trajo ningún mensaje
-                // (danger/warning/success vacíos), no habrá popup que el
-                // operador pueda tocar para reanudar — se desbloquea de
-                // inmediato para no dejar el escaneo trabado sin salida.
-                if (!nextPopup) {
-                    setBloqueado(false)
+                if (nextPopup.kind === 'error') {
+                    play('/sounds/error.mp3')
                 }
 
             } catch (err) {
@@ -189,24 +154,60 @@ export default function Welcome2() {
                 setPopup({
                     kind: 'error',
                     items: ['No se pudo contactar al servidor'],
+                    canConfirm: false,
                 });
-                // bloqueado permanece true: el popup de error también se
-                // cierra con un tap, igual que el de éxito.
-
-            } finally {
-                setDudosa(false);
             }
         },
-        [dudosa, play]
+        [play]
     );
 
-    // Cierra el popup y libera el escaneo. Este es el único punto donde
-    // `bloqueado` vuelve a false tras un registro — así el popup bloquea
-    // nuevas lecturas mientras esté visible, y el operador decide
-    // explícitamente cuándo continuar con un simple tap.
+    const handlePopupAction = useCallback(async (action: CheckInAction) => {
+        const rut = pendingRutRef.current
+        if (!rut || actionPending) return
+
+        setActionPending(true)
+        try {
+            const res = await fetch('/api/events/check-in/confirm', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rut, action }),
+            })
+            const data = (await res.json()) as CheckInResponse
+
+            if (!res.ok || !data.success?.length) {
+                setPopup(buildPopup(data))
+                play('/sounds/error.mp3')
+                return
+            }
+
+            setPopup(null)
+            setBloqueado(false)
+            bloqueadoRef.current = false
+            pendingRutRef.current = ''
+            setRutValue('')
+            play('/sounds/accept.mp3')
+            if (action === 'Ingresa' || action === 'Paga') {
+                launchConfetti({ count: 180, duration: 2600, spread: 240 })
+            }
+        } catch (err) {
+            console.error('Error al confirmar ingreso', err)
+            setPopup({
+                kind: 'error',
+                items: ['No se pudo confirmar el check-in'],
+                canConfirm: false,
+            })
+            play('/sounds/error.mp3')
+        } finally {
+            setActionPending(false)
+        }
+    }, [actionPending, play])
+
     const dismissPopup = useCallback(() => {
         setPopup(null)
         setBloqueado(false)
+        bloqueadoRef.current = false
+        pendingRutRef.current = ''
+        setRutValue('')
     }, [])
 
     // Espejo en ref de `registrarIngreso`, por la misma razón que
@@ -354,10 +355,6 @@ export default function Welcome2() {
         }
     }, [!!actualEvent, actualEvent?.cerrado, scanLoop, stopCamera])
 
-    function toggleBan() {
-        setDudosa((prev) => !prev)
-    }
-
     return (
         <div className="relative flex flex-col items-center justify-center h-screen w-full bg-black text-white">
             <div className="area absolute inset-0 z-0">
@@ -420,11 +417,11 @@ export default function Welcome2() {
 
                             <canvas ref={canvasRef} style={{ display: 'none' }} />
 
-                            {/* Input + cara feliz/dudosa: ancho acotado a
+                            {/* Input: ancho acotado a
                                 max-w-xs para que quepan cómodos en una
                                 pantalla de celular angosta, alineados con
                                 el ancho del recuadro de cámara. */}
-                            <div className="flex w-full max-w-xs items-center justify-center gap-3">
+                            <div className="flex w-full max-w-xs items-center justify-center">
                                 <div id="div-rut" className="min-w-0 flex-1 text-left">
                                     <p className="text-sm sm:text-base">RUT</p>
                                     <input
@@ -436,21 +433,6 @@ export default function Welcome2() {
                                         disabled={!!actualEvent?.cerrado}
                                         readOnly
                                     />
-                                </div>
-                                <div className="boton-ban shrink-0">
-                                    <div
-                                        id="btn-ban"
-                                        className={`flex h-20 w-20 items-center justify-center rounded-xl border-2 p-2 ${dudosa ? 'btn-danger border-orange-400' : 'btn-default border-blue-700 '} bg-blue-900`
-                                            }
-                                        onClick={toggleBan}
-                                    >
-                                        <img
-                                            src='/cara-feliz.png'
-                                            height={50}
-                                            alt="Estado"
-                                            className="invert"
-                                        />
-                                    </div>
                                 </div>
                             </div>
 
@@ -465,43 +447,13 @@ export default function Welcome2() {
                 </div>
             </div>
 
-            {/* Popup de resultado del check-in: verde para éxito, rojo para
-                error/advertencia. Cubre toda la pantalla y un simple tap
-                (en cualquier parte) lo cierra y reanuda el escaneo. */}
             {popup && (
-                <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6"
-                    role="alert"
-                    onClick={dismissPopup}
-                >
-                    <div
-                        className={`w-full max-w-sm rounded-2xl border-4 p-6 text-center shadow-2xl ${popup.kind === 'success'
-                                ? 'border-green-300 bg-green-600'
-                                : 'border-red-300 bg-red-600'
-                            }`}
-                    >
-                        <div className="flex flex-col items-center gap-2">
-                            {popup.kind === 'success' ? (
-                                <FaCheckCircle className="text-5xl text-green-50" />
-                            ) : (
-                                <PiWarningOctagonFill className="text-5xl text-red-50" />
-                            )}
-                            <p className="text-2xl font-bold text-white">
-                                {popup.kind === 'success' ? '¡Presente en la lista!' : '¡Atención!'}
-                            </p>
-                        </div>
-
-                        {popup.items.length > 0 && (
-                            <div className="mt-4 space-y-1 text-4xl text-white">
-                                {popup.items.map((item, i) => (
-                                    <p key={i}>{item}</p>
-                                ))}
-                            </div>
-                        )}
-
-                        <p className="mt-6 text-xl text-white/80">Toca para continuar</p>
-                    </div>
-                </div>
+                <CheckInResultPopup
+                    result={popup}
+                    onAction={handlePopupAction}
+                    onDismiss={dismissPopup}
+                    actionPending={actionPending}
+                />
             )}
         </div>
     )

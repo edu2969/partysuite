@@ -5,10 +5,7 @@ import { useRouter } from "next/navigation";
 import { BiParty } from "react-icons/bi";
 import Link from "next/link";
 import { FaPlus } from "react-icons/fa6";
-import {
-  EVENT_TIME_ZONE,
-  getEventCountdownStart,
-} from "@/lib/eventClose";
+import { EVENT_TIME_ZONE } from "@/lib/eventClose";
 
 interface EventData {
   _id: string;
@@ -19,6 +16,8 @@ interface EventData {
   arrives: number;
   listClosedAt: string;
   closeAt: string;
+  canImport: boolean;
+  importDeadline: string | null;
   timeZone?: string;
 }
 
@@ -56,30 +55,18 @@ function formatEventTime(date: string) {
 const EVENTS_REFRESH_INTERVAL = 10_000;
 
 function EventCountdown({
-  businessDate,
   startsAt,
-  closedAt,
+  deadlineAt,
 }: {
-  businessDate: string;
   startsAt?: string;
-  closedAt: string;
+  deadlineAt: string | null;
 }) {
   const [now, setNow] = useState<number | null>(null);
-  const startAt = startsAt
-    ? new Date(startsAt).getTime()
-    : getEventCountdownStart(businessDate)?.getTime();
-  const endAt = new Date(closedAt).getTime();
+  const startAt = startsAt ? new Date(startsAt).getTime() : Number.NaN;
+  const endAt = deadlineAt ? new Date(deadlineAt).getTime() : Number.NaN;
 
   useEffect(() => {
-    if (
-      startAt === undefined ||
-      endAt === undefined ||
-      !Number.isFinite(startAt) ||
-      !Number.isFinite(endAt) ||
-      endAt <= startAt
-    ) {
-      return;
-    }
+    if (!Number.isFinite(endAt) || endAt <= Date.now()) return;
 
     let timeout: ReturnType<typeof setTimeout>;
     let cancelled = false;
@@ -89,46 +76,40 @@ function EventCountdown({
       setNow(timestamp);
 
       if (!cancelled && timestamp < endAt) {
-        const delay = timestamp < startAt
-          ? startAt - timestamp
-          : 1_000;
-        timeout = setTimeout(tick, Math.min(delay, 2_147_483_647));
+        timeout = setTimeout(
+          tick,
+          Math.min(1_000, endAt - timestamp)
+        );
       }
     };
 
-    const timestamp = Date.now();
-    if (timestamp < endAt) {
-      timeout = setTimeout(tick, timestamp < startAt
-        ? Math.min(startAt - timestamp, 2_147_483_647)
-        : 0);
-    }
+    tick();
 
     return () => {
       cancelled = true;
       clearTimeout(timeout);
     };
-  }, [startAt, endAt]);
+  }, [endAt]);
 
   if (
     now === null ||
-    startAt === undefined ||
-    endAt === undefined ||
-    !Number.isFinite(startAt) ||
     !Number.isFinite(endAt) ||
-    now < startAt ||
     now >= endAt
   ) {
     return null;
   }
 
-  const duration = endAt - startAt;
   const remaining = endAt - now;
-  const remainingRatio = Math.max(
-    0,
-    Math.min((endAt - Math.max(now, startAt)) / duration, 1)
-  );
-  const elapsedRatio = 1 - remainingRatio;
-  const urgency = elapsedRatio >= 0.9 ? "red" : elapsedRatio >= 0.1 ? "amber" : "green";
+  const duration = endAt - startAt;
+  const remainingRatio = duration > 0
+    ? Math.max(0, Math.min(
+        (endAt - Math.max(now, startAt)) / duration,
+        1
+      ))
+    : null;
+  const elapsedRatio = remainingRatio === null ? 0 : 1 - remainingRatio;
+  const urgency =
+    elapsedRatio >= 0.9 ? "red" : elapsedRatio >= 0.1 ? "amber" : "green";
   const colors = {
     green: { text: "text-emerald-400", fill: "bg-emerald-500" },
     amber: { text: "text-amber-300", fill: "bg-amber-400" },
@@ -143,26 +124,28 @@ function EventCountdown({
     .join(":");
 
   return (
-    <div className="absolute top-0 right-6  mt-2 max-w-sm" aria-label="Cuenta regresiva para el cierre de lista">
+    <div className="mt-2 max-w-sm" aria-label="Cuenta regresiva para el cierre de importación">
       <div className="mb-1 flex items-center justify-between gap-3">
-        <span className={`text-sm font-medium ${colors.text}`}>Cierra en</span>
+        <span className={`text-sm font-medium ${colors.text}`}>Importación cierra en</span>
         <time className={`font-mono text-lg font-semibold tabular-nums ${colors.text}`} role="timer" aria-live="off">
           {countdown}
         </time>
       </div>
-      <div
-        className="h-2 overflow-hidden rounded-full bg-slate-700"
-        role="progressbar"
-        aria-label="Tiempo restante hasta el cierre de lista"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={Math.ceil(remainingRatio * 100)}
-      >
+      {remainingRatio !== null && (
         <div
-          className={`h-full rounded-full transition-[width] duration-1000 ${colors.fill}`}
-          style={{ width: `${remainingRatio * 100}%` }}
-        />
-      </div>
+          className="h-2 overflow-hidden rounded-full bg-slate-700"
+          role="progressbar"
+          aria-label="Tiempo restante para importar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.ceil(remainingRatio * 100)}
+        >
+          <div
+            className={`h-full rounded-full transition-[width] duration-1000 ${colors.fill}`}
+            style={{ width: `${remainingRatio * 100}%` }}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -223,7 +206,7 @@ export default function EventsList({
 
       const data = await response.json();
       setEvents(data.events || []);
-      setCanImport(data.canImport);
+      setCanImport(data.events?.[0]?.canImport ?? false);
     } catch (error) {
       console.error(error);
 
@@ -452,9 +435,8 @@ export default function EventsList({
                   {(!canImport && index === 0) &&  <p className="text-orange-400">📢 Ya no se puede importar más</p>}
                   {index === 0 && (
                   <EventCountdown
-                    businessDate={event.businessDate}
                     startsAt={event.startsAt}
-                    closedAt={event.listClosedAt}
+                    deadlineAt={event.importDeadline}
                   />
                   )}
 

@@ -2,56 +2,51 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { formatClock } from '@/lib/time'
-import type { EventInfo, Guest, ImportMessages } from '@/lib/types'
-import { PiWarningOctagonFill } from "react-icons/pi";
+import type { EventInfo, ImportMessages } from '@/lib/types'
 import { launchConfetti } from '@/app/utils/confeti'
-import { FaCheckCircle } from 'react-icons/fa';
 import { TbCameraSearch } from "react-icons/tb";
 import { useRouter } from 'next/navigation';
 import { useSoundPlayer } from './context/SoundPlayerContext';
 import { format } from 'date-fns';
+import CheckInResultPopup, { type CheckInAction, type CheckInResult } from './CheckInResultPopup'
 
-type PopupKind = 'success' | 'error'
-interface PopupState {
-    kind: PopupKind
-    items: string[]
+interface CheckInResponse extends ImportMessages {
+  canConfirm?: boolean
 }
 
-function buildPopup(data: ImportMessages): PopupState | null {
+function buildPopup(data: CheckInResponse): CheckInResult {
     if (data.danger?.length) {
-        return { kind: 'error', items: data.danger.map((d) => d.item) }
+        return { kind: 'error', items: data.danger.map((d) => d.item), canConfirm: data.canConfirm === true }
     }
     if (data.warning?.length) {
-        return { kind: 'error', items: data.warning.map((w) => w.item) }
+        return { kind: 'error', items: data.warning.map((w) => w.item), canConfirm: data.canConfirm === true }
     }
     if (data.success?.length) {
-        return { kind: 'success', items: data.success.map((s) => s.item) }
+        return { kind: 'success', items: data.success.map((s) => s.item), canConfirm: data.canConfirm === true }
     }
-    return null
+    return { kind: 'error', items: ['No se recibió una respuesta válida'], canConfirm: false }
 }
 
 export default function Welcome() {
   const router = useRouter();
   const [time, setTime] = useState('00:00:00')
   const [actualEvent, setActualEvent] = useState<EventInfo | null>(null)
-  const [messages, setMessages] = useState<ImportMessages>({})
-  const [guestToRegister, setGuestToRegister] = useState<Guest | false>(false)
   const [bloqueado, setBloqueado] = useState(false)
-  const [dudosa, setDudosa] = useState(false) // reemplaza leer "dudosa"/"feliz" del src de la imagen
   const [rutValue, setRutValue] = useState('')
-  const [messageKey, setMessageKey] = useState(0);
-  const clearMessageTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [actionPending, setActionPending] = useState(false)
   const { play } = useSoundPlayer();
 
   // Equivalente a la variable de módulo `cadena` del original. Un ref evita
   // relecturas de estado obsoletas dentro del handler de keydown.
   const cadenaRef = useRef('')
   const rutInputRef = useRef<HTMLInputElement>(null)
+  const pendingRutRef = useRef('')
+  const [popup, setPopup] = useState<CheckInResult | null>(null)
+  const popupRef = useRef(popup)
 
-  const [popup, setPopup] = useState<PopupState | null>(null)
-
-  // Equivalente al helper `noGender`
-  const noGender = !guestToRegister ? true : !guestToRegister.gender ? false : true
+  useEffect(() => {
+    popupRef.current = popup
+  }, [popup])
 
   // --- Reloj (updateTime + setInterval) ---
   useEffect(() => {
@@ -85,22 +80,16 @@ export default function Welcome() {
 
   useEffect(() => {
     rutInputRef.current?.focus()
-    setMessages({})
-    setGuestToRegister(false)
     setBloqueado(false)
 
     function handleWindowKeydown(e: KeyboardEvent) {
-      if (e.key === "b") {
-        document.getElementById('btn-ban')?.click()
-      }      
-
       // Si el foco no está en el input del RUT (por ejemplo, el operador
       // hizo clic en otro lugar, o algún elemento robó el foco), lo
       // recuperamos para que el lector de código de barras -que dispara
       // estos mismos eventos de teclado a nivel global- siga funcionando
       // sin que alguien tenga que hacer clic manualmente en el campo.
       const input = rutInputRef.current
-      if (input && document.activeElement !== input && !input.disabled) {
+      if (!popupRef.current && input && document.activeElement !== input && !input.disabled) {
         input.focus()
       }
     }
@@ -108,14 +97,6 @@ export default function Welcome() {
     window.addEventListener('keydown', handleWindowKeydown)
     return () => window.removeEventListener('keydown', handleWindowKeydown)
   }, [])
-
-  useEffect(() => {
-    return () => {
-      if (clearMessageTimer.current) {
-        clearTimeout(clearMessageTimer.current);
-      }
-    };
-  }, []);
 
   // --- Equivalente a la función evaluar(cadena) ---
   function evaluarCadena(cadena: string): string | false {
@@ -135,11 +116,7 @@ export default function Welcome() {
   const registrarIngreso = useCallback(
     async (rut: string) => {
       setBloqueado(true);
-
-      // Cancela el timer anterior si todavía existe
-      if (clearMessageTimer.current) {
-        clearTimeout(clearMessageTimer.current);
-      }
+      pendingRutRef.current = rut;
 
       try {
         const res = await fetch('/api/events/check-in', {
@@ -147,65 +124,35 @@ export default function Welcome() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            rut,
-            dudosa,
-          }),
+          body: JSON.stringify({ rut }),
         });
 
-        const data = await res.json();
+        const data = await res.json() as CheckInResponse;
 
         setRutValue('');
-        setGuestToRegister(false);
-
-        // Fuerza un nuevo montaje del mensaje
-        setMessageKey((prev) => prev + 1);
-        setMessages(data);
-
-        if (data?.success?.length) {
-          play('/sounds/accept.mp3')
-          launchConfetti({
-            count: 180,
-            duration: 2600,
-            spread: 240,
-          });
-        } else {
-            play('/sounds/error.mp3')
-        }
 
         const nextPopup = buildPopup(data)
         setPopup(nextPopup)
 
-        // 4 segundos: coincide exactamente con la animación
-        clearMessageTimer.current = setTimeout(() => {
-          setMessages({});
-        }, 4000);
+        if (nextPopup.kind === 'error') {
+          play('/sounds/error.mp3')
+        }
 
       } catch (err) {
         play('/sounds/error.mp3')
         console.error('Error al registrar ingreso', err);
 
-        setMessageKey((prev) => prev + 1);
-
-        setMessages({
-          danger: [
-            {
-              item: 'No se pudo contactar al servidor',
-            },
-          ],
+        setPopup({
+          kind: 'error',
+          items: ['No se pudo contactar al servidor'],
+          canConfirm: false,
         });
 
-        clearMessageTimer.current = setTimeout(() => {
-          setMessages({});
-        }, 4000);
-
       } finally {
-        setBloqueado(false);
         rutInputRef.current?.focus();
-        setDudosa(false);
       }
     },
-    [dudosa]
+    [play]
   );
 
   // --- Equivalente a 'keydown #guest-rut' (captura del lector de código) ---
@@ -231,17 +178,55 @@ export default function Welcome() {
     }
   }
 
-  function toggleBan() {
-    setDudosa((prev) => !prev)
-  }
-
   function handleSwitchMethod() {
     router.push("/welcome2");
   }
 
-  const dismissPopup = useCallback(() => {
+  const handlePopupAction = useCallback(async (action: CheckInAction) => {
+    const rut = pendingRutRef.current
+    if (!rut || actionPending) return
+
+    setActionPending(true)
+    try {
+      const res = await fetch('/api/events/check-in/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rut, action }),
+      })
+      const data = await res.json() as CheckInResponse
+
+      if (!res.ok || !data.success?.length) {
+        setPopup(buildPopup(data))
+        play('/sounds/error.mp3')
+        return
+      }
+
       setPopup(null)
       setBloqueado(false)
+      pendingRutRef.current = ''
+      setRutValue('')
+      play('/sounds/accept.mp3')
+      if (action === 'Ingresa' || action === 'Paga') {
+        launchConfetti({ count: 180, duration: 2600, spread: 240 })
+      }
+    } catch (err) {
+      console.error('Error al confirmar ingreso', err)
+      setPopup({
+        kind: 'error',
+        items: ['No se pudo confirmar el check-in'],
+        canConfirm: false,
+      })
+      play('/sounds/error.mp3')
+    } finally {
+      setActionPending(false)
+    }
+  }, [actionPending, play])
+
+  const dismissPopup = useCallback(() => {
+    setPopup(null)
+    setBloqueado(false)
+    pendingRutRef.current = ''
+    setRutValue('')
   }, [])
 
   return (
@@ -305,62 +290,17 @@ export default function Welcome() {
                   onKeyDown={handleRutKeyDown}
                 />
               </div>
-              <div className="boton-ban" style={{ display: 'inline-block', verticalAlign: 'top' }}>
-                <div
-                  id="btn-ban"
-                  className={`${dudosa ? 'btn-danger border-orange-400' : 'btn-default border-blue-700 '} bg-blue-900 border-2 w-18 mt-5 rounded-xl p-4`}
-                  onClick={toggleBan}
-                >
-                  <img
-                    src='/cara-feliz.png'
-                    height={52}
-                    alt="Estado"
-                    className="invert"
-                  />
-                </div>
-              </div>
-
             </div>
           </div>
 
 
-          {/* Popup de resultado del check-in: verde para éxito, rojo para
-                error/advertencia. Cubre toda la pantalla y un simple tap
-                (en cualquier parte) lo cierra y reanuda el escaneo. */}
           {popup && (
-              <div
-                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6"
-                  role="alert"
-                  onClick={dismissPopup}
-              >
-                  <div
-                      className={`w-full max-w-sm rounded-2xl border-4 p-6 text-center shadow-2xl ${popup.kind === 'success'
-                              ? 'border-green-300 bg-green-600'
-                              : 'border-red-300 bg-red-600'
-                          }`}
-                  >
-                      <div className="flex flex-col items-center gap-2">
-                          {popup.kind === 'success' ? (
-                              <FaCheckCircle className="text-5xl text-green-50" />
-                          ) : (
-                              <PiWarningOctagonFill className="text-5xl text-red-50" />
-                          )}
-                          <p className="text-2xl font-bold text-white">
-                              {popup.kind === 'success' ? '¡Presente en la lista!' : '¡Atención!'}
-                          </p>
-                      </div>
-
-                      {popup.items.length > 0 && (
-                          <div className="mt-4 space-y-1 text-4xl text-white">
-                              {popup.items.map((item, i) => (
-                                  <p key={i}>{item}</p>
-                              ))}
-                          </div>
-                      )}
-
-                      <p className="mt-6 text-xl text-white/80">Toca para continuar</p>
-                  </div>
-              </div>
+              <CheckInResultPopup
+                result={popup}
+                onAction={handlePopupAction}
+                onDismiss={dismissPopup}
+                actionPending={actionPending}
+              />
           )}
 
         </div>

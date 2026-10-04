@@ -23,6 +23,21 @@ const AttenderSchema = new Schema(
       index: true,
     },
 
+    banned: {
+      type: Boolean,
+      optional: true
+    },
+
+    paid: {
+      type: Boolean,
+      optional: true
+    },
+
+    rejected: {
+      type: Boolean,
+      optional: true
+    },
+
     checktime: {
       type: Date,
       optional: true

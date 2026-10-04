@@ -5,6 +5,7 @@ import User from "@/models/user";
 import mongoose from "mongoose";
 import { isAccountRole } from "@/app/utils/isAccountRole";
 import bcrypt from "bcryptjs";
+import { isValidProImportTime } from "@/lib/eventClose";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ accountId: string }> }) {
     await connectMongoDB();
@@ -50,6 +51,7 @@ export async function PUT(
   const email = body?.email;
   const role = body?.role;
   const maxAttendersByEvent = body?.maxAttendersByEvent;
+  const maxImportTime = body?.maxImportTime;
   const password: string | undefined = body?.password || undefined; // "" o undefined → no se toca
 
   if (typeof name !== "string" || !name.trim()) {
@@ -63,6 +65,13 @@ export async function PUT(
   if (!isAccountRole(role)) {
     return NextResponse.json({ error: "'role' inválido" }, { status: 400 });
   }
+
+  if (role === "LISTERO_PRO" && !isValidProImportTime(maxImportTime)) {
+    return NextResponse.json(
+      { error: "La hora máxima debe ser posterior a las 23:30 o anterior a las 05:00" },
+      { status: 400 }
+    );
+  }
  
   await connectMongoDB();
  
@@ -73,15 +82,26 @@ export async function PUT(
     role,
     maxAttendersByEvent
   };
+  if (role === "LISTERO_PRO") {
+    update.maxImportTime = maxImportTime;
+  }
  
   if (password) {
     update.password = await bcrypt.hash(password, SALT_ROUNDS);
   }
  
   try {
+    const updateOperation: {
+      $set: Record<string, unknown>;
+      $unset?: { maxImportTime: 1 };
+    } = { $set: update };
+    if (role !== "LISTERO_PRO") {
+      updateOperation.$unset = { maxImportTime: 1 };
+    }
+
     const updated = await User.findByIdAndUpdate(
       accountId,
-      { $set: update },
+      updateOperation,
       { new: true, runValidators: true }
     );
     // no hace falta .select("-password"): el schema ya tiene select:false en password
@@ -147,4 +167,3 @@ export async function DELETE(
     return NextResponse.json({ error: "Error al eliminar la cuenta" }, { status: 500 });
   }
 }
-
