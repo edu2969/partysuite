@@ -38,8 +38,16 @@ export async function GET(
     const event = await Event.findById(eventId)
       .lean();
 
+    if (!event) {
+      return NextResponse.json(
+        { message: "Evento no encontrado" },
+        { status: 404 }
+      );
+    }
+
     return NextResponse.json({ ok: true, event: {
       ...event,
+      businessDate: event.businessDate.toISOString().slice(0, 10),
       maxImport: userData.maxAttendersByEvent,
       actualImported: cantidadInscritos
     }}, { status: 200 });

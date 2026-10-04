@@ -258,6 +258,28 @@ export function getEventProCloseAt(eventDate: Date | string): Date | null {
   );
 }
 
+export function getEventImportDeadline(
+  businessDate: Date | string,
+  listClosedAt: Date | string,
+  isPro: boolean,
+  closeAt?: Date | string
+): Date | null {
+  const calendarDate = businessDate instanceof Date
+    ? businessDate.toISOString().slice(0, 10)
+    : businessDate;
+  const listDeadline = isPro
+    ? getEventProCloseAt(calendarDate)
+    : new Date(listClosedAt);
+
+  if (!listDeadline || Number.isNaN(listDeadline.getTime())) return null;
+  if (!isPro || !closeAt) return listDeadline;
+
+  const eventDeadline = new Date(closeAt);
+  if (Number.isNaN(eventDeadline.getTime())) return null;
+
+  return new Date(Math.min(listDeadline.getTime(), eventDeadline.getTime()));
+}
+
 export function getEventCloseDeadline(eventDate: Date | string): Date | null {
   const eventDay = getCalendarDateParts(eventDate);
   if (!eventDay) return null;

@@ -7,6 +7,7 @@ import BILista from "@/models/biLista";
 import User from "@/models/user";
 import { checkRut } from "@/app/utils/rut";
 import { auth } from "@/app/utils/auth";
+import { getEventImportDeadline } from "@/lib/eventClose";
 
 interface ImportRequest {
   entradas: string[];
@@ -97,12 +98,35 @@ export async function POST(request: NextRequest) {
       messages[type]!.push({ item });
     };
 
-    if(userData.role === "LISTERO") {
-      const momentoCierre = new Date(eventSelected.listClosedAt);
-      if (momentoCierre < new Date()) {
+    if (
+      userData.role === "LISTERO" ||
+      userData.role === "LISTERO_PRO"
+    ) {
+      const momentoCierre = getEventImportDeadline(
+        eventSelected.businessDate,
+        eventSelected.listClosedAt,
+        userData.role === "LISTERO_PRO",
+        eventSelected.closeAt
+      );
+
+      if (!momentoCierre) {
+        console.error(
+          `El evento ${eventId} no tiene una hora de cierre de importación válida`
+        );
+        addMessage(
+          "danger",
+          "No se pudo verificar la hora de cierre de la lista"
+        );
+        return NextResponse.json(messages, { status: 500 });
+      }
+
+      if (Date.now() >= momentoCierre.getTime()) {
         addMessage("danger", "La lista ha cerrado. Lo sentimos");
         return NextResponse.json(messages);
       }
+    }
+
+    if (userData.role === "LISTERO") {
       const countAttenders = await Attender.find({
         userId: userId,
         eventId: eventId

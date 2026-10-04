@@ -3,13 +3,18 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getEventCountdownStart } from "@/lib/eventClose";
+import {
+  getEventCountdownStart,
+  getEventImportDeadline,
+} from "@/lib/eventClose";
 
 interface EventData {
   _id: string;
   name: string;
-  date: string;
-  closedAt: string;
+  businessDate: string;
+  startsAt?: string;
+  listClosedAt: string;
+  closeAt: string;
   maxImport: number;
   actualImported: number;
 }
@@ -27,6 +32,7 @@ interface ImportMessages {
 
 interface AttendersImportProps {
   eventId: string;
+  isPro: boolean;
 }
 
 function formatCountdown(milliseconds: number) {
@@ -42,6 +48,7 @@ function formatCountdown(milliseconds: number) {
 
 export default function AttendersImport({
   eventId,
+  isPro,
 }: AttendersImportProps) {
   const router = useRouter();
 
@@ -67,14 +74,22 @@ export default function AttendersImport({
     }
   })
 
-  const deadline = event ? new Date(event.closedAt).getTime() : Number.NaN;
-  const eventCountdownStart = event
-    ? getEventCountdownStart(event.date)?.getTime()
-    : undefined;
-  const progressStart = eventCountdownStart !== undefined && eventCountdownStart < deadline
-    ? eventCountdownStart
+  const listDeadline = event
+    ? getEventImportDeadline(
+        event.businessDate,
+        event.listClosedAt,
+        isPro,
+        event.closeAt
+      )
+    : null;
+  const deadline = listDeadline?.getTime() ?? Number.NaN;
+  const storedStart = event?.startsAt
+    ? new Date(event.startsAt).getTime()
+    : Number.NaN;
+  const progressStart = Number.isFinite(storedStart)
+    ? storedStart
     : event
-      ? new Date(event.date).getTime()
+      ? getEventCountdownStart(event.businessDate)?.getTime() ?? Number.NaN
       : Number.NaN;
 
   useEffect(() => {
@@ -97,7 +112,8 @@ export default function AttendersImport({
   }, [deadline]);
 
   const hasValidDeadline = Number.isFinite(deadline);
-  const deadlinePassed = hasValidDeadline && now !== null && now >= deadline;
+  const deadlinePassed =
+    hasValidDeadline && Date.now() >= deadline;
   const remainingTime = now === null ? null : Math.max(0, deadline - now);
   const progressDuration = deadline - progressStart;
   const remainingRatio = progressDuration > 0
@@ -316,7 +332,11 @@ export default function AttendersImport({
 Juan Perez 12.345.678-5
 Maria Gonzalez 15234567-8`}
           rows={8}
-          disabled={importing || !hasValidDeadline || deadlinePassed}
+          disabled={
+            importing ||
+            !hasValidDeadline ||
+            deadlinePassed
+          }
           className="block w-full resize-none rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 font-mono text-md text-gray-100 shadow-sm outline-none transition placeholder:text-gray-600 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 disabled:opacity-50"
         />
       </div>
@@ -420,7 +440,12 @@ Maria Gonzalez 15234567-8`}
         <button
           type="button"
           onClick={handleImport}
-          disabled={importing || event.maxImport <= 0 || !hasValidDeadline || deadlinePassed}
+          disabled={
+            importing ||
+            event.maxImport <= 0 ||
+            !hasValidDeadline ||
+            deadlinePassed
+          }
           className="w-3/5 flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-3 font-semibold text-white shadow-sm transition hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/50 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {importing ? (
