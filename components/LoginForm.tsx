@@ -98,7 +98,7 @@ export default function LoginForm() {
             />
 
             <div className="mt-4 text-center">
-              <h1 className="text-4xl font-semibold tracking-tight text-gray-200">
+              <h1 className="rainbow-text text-5xl font-semibold tracking-tight">
                 PartySuite
               </h1>
             </div>
