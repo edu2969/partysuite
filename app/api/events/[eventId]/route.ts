@@ -36,7 +36,12 @@ export async function GET(
     });    
 
     const event = await Event.findById(eventId)
-      .lean();
+      .lean<{
+        _id: mongoose.Types.ObjectId;
+        name: string;
+        businessDate: Date;
+        startsAt: Date;
+      }>();
 
     if (!event) {
       return NextResponse.json(
