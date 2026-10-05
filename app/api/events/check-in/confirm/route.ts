@@ -12,6 +12,7 @@ import BILista from "@/models/biLista";
 import Event from "@/models/event";
 import Guest from "@/models/guest";
 import { horaNocturna } from "@/lib/time";
+import { countsAsAttendance } from "@/lib/attenderStatus";
 
 const checkInActions = [
   "Ingresa",
@@ -145,11 +146,9 @@ export async function POST(request: NextRequest) {
       userId: unknown;
     }>();
     const previousChecktime = currentAttender?.checktime ?? null;
-    const alreadyCounted =
-      Boolean(previousChecktime) &&
-      (currentAttender?.paid === true ||
-        (currentAttender?.rejected !== true &&
-          currentAttender?.banned !== true));
+    const alreadyCounted = currentAttender
+      ? countsAsAttendance(currentAttender)
+      : false;
 
     const update: AttenderUpdate = { checktime };
     if (action === "Paga") update.paid = true;
@@ -182,6 +181,7 @@ export async function POST(request: NextRequest) {
         attender = await Attender.create({
           eventId: event._id,
           guestId: guest._id,
+          // Only portería can reach this endpoint; unimported check-ins belong to its account.
           userId: session.user.id,
           ...update,
         });

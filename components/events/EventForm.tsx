@@ -24,6 +24,14 @@ interface EventData {
   total: number;
   arrives: number;
   averageCheckTime: number;
+  summary?: {
+    attendees: number;
+    absentees: number;
+    attendancePercentage: number;
+    banned: number;
+    rejected: number;
+    paid: number;
+  };
 }
 
 interface EventForm {
@@ -60,7 +68,7 @@ export default function EventForm({ eventId }: EventEditProps) {
   const [loading, setLoading] = useState(!!eventId);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [activeTab, setActiveTab] = useState<'torta' | 'tabla' | 'ranking'>('torta')
+  const [activeTab, setActiveTab] = useState<'resumen' | 'torta' | 'tabla' | 'ranking'>('resumen')
 
   const {
     register,
@@ -351,7 +359,22 @@ export default function EventForm({ eventId }: EventEditProps) {
           </h2>
 
           <div className="mb-6 border-b border-slate-700">
-            <div className="flex gap-6" role="tablist" aria-label="Distribución de captaciones">
+            <div className="flex gap-6 overflow-x-auto" role="tablist" aria-label="Resumen del evento y distribución de captaciones">
+
+              <button
+                type="button"
+                role="tab"
+                id="tab-resumen"
+                aria-selected={activeTab === 'resumen'}
+                aria-controls="panel-resumen"
+                onClick={() => setActiveTab('resumen')}
+                className={`border-b-2 px-2 pb-3 text-sm font-medium transition ${activeTab === 'resumen'
+                  ? 'border-cyan-500 text-cyan-400'
+                  : 'border-transparent text-gray-400 hover:text-white'
+                  }`}
+              >
+                Resumen
+              </button>
 
               <button
                 type="button"
@@ -401,13 +424,65 @@ export default function EventForm({ eventId }: EventEditProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+          {activeTab === 'resumen' && (
+            <div
+              id="panel-resumen"
+              role="tabpanel"
+              aria-labelledby="tab-resumen"
+              className="grid grid-cols-2 gap-4 xl:grid-cols-4"
+            >
+              <article className="col-span-2 row-span-2 flex min-h-64 flex-col justify-between rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-6">
+                <h3 className="text-lg font-semibold text-cyan-200">Asistentes</h3>
+                <p className="text-7xl font-black tracking-tight text-white md:text-8xl">
+                  {(event?.summary?.attendees ?? event?.arrives ?? 0).toLocaleString('es-CL')}
+                </p>
+                <p className="text-sm text-cyan-100/70">
+                  de {(event?.total ?? 0).toLocaleString('es-CL')} inscritos
+                </p>
+              </article>
 
-            {activeTab === 'torta' && (<div className="flex min-h-100 items-center justify-center rounded-lg bg-slate-950/50">
+              <article className="flex min-h-28 flex-col justify-between rounded-xl border border-slate-700 bg-slate-950/70 p-5">
+                <h3 className="text-sm font-medium text-slate-400">Ausentes</h3>
+                <p className="text-4xl font-bold text-slate-200">
+                  {(event?.summary?.absentees ?? 0).toLocaleString('es-CL')}
+                </p>
+              </article>
+
+              <article className="flex min-h-28 flex-col justify-between rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-5">
+                <h3 className="text-sm font-medium text-emerald-300">Porcentaje de asistencia</h3>
+                <p className="text-4xl font-bold text-white">
+                  {(event?.summary?.attendancePercentage ?? 0).toFixed(1)}%
+                </p>
+              </article>
+
+              <article className="flex min-h-28 flex-col justify-between rounded-xl border border-red-500/20 bg-red-500/5 p-5">
+                <h3 className="text-sm font-medium text-red-300">Baneados</h3>
+                <p className="text-4xl font-bold text-white">
+                  {(event?.summary?.banned ?? 0).toLocaleString('es-CL')}
+                </p>
+              </article>
+
+              <article className="flex min-h-28 flex-col justify-between rounded-xl border border-orange-500/20 bg-orange-500/5 p-5">
+                <h3 className="text-sm font-medium text-orange-300">Rechazados</h3>
+                <p className="text-4xl font-bold text-white">
+                  {(event?.summary?.rejected ?? 0).toLocaleString('es-CL')}
+                </p>
+              </article>
+
+              <article className="flex min-h-28 flex-col justify-between rounded-xl border border-green-500/20 bg-green-500/5 p-5">
+                <h3 className="text-sm font-medium text-green-300">Pagados</h3>
+                <p className="text-4xl font-bold text-white">
+                  {(event?.summary?.paid ?? 0).toLocaleString('es-CL')}
+                </p>
+              </article>
+            </div>
+          )}
+
+          {activeTab === 'torta' && (<div id="panel-torta" role="tabpanel" aria-labelledby="tab-torta" className="flex min-h-100 items-center justify-center rounded-lg bg-slate-950/50">
               <PieChart listeros={listeros} />
-            </div>)}
+          </div>)}
 
-            {activeTab === 'tabla' && (<div className="overflow-x-auto min-h-100">
+          {activeTab === 'tabla' && (<div id="panel-tabla" role="tabpanel" aria-labelledby="tab-tabla" className="overflow-x-auto min-h-100">
 
               <table className="w-full text-left text-sm">
 
@@ -457,18 +532,16 @@ export default function EventForm({ eventId }: EventEditProps) {
                   )}
                 </tbody>
               </table>
-            </div>)}
+          </div>)}
 
-            {activeTab === 'ranking' && (<div className="flex min-h-100 items-center justify-center rounded-lg bg-slate-950/50">
+          {activeTab === 'ranking' && (<div id="panel-ranking" role="tabpanel" aria-labelledby="tab-ranking" className="flex min-h-100 items-center justify-center rounded-lg bg-slate-950/50">
               <VerticalRankingBar totals={listeros.map((rp) => {
                 return {
                   name: rp.userId.name,
                   total: rp.asisten
                 }
               }).sort((a, b) => b.total - a.total)} />
-            </div>)}
-
-          </div>
+          </div>)}
         </section>
       </div>
     </main>

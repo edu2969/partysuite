@@ -53,6 +53,9 @@ export async function GET(
         startsAt: Date;
         listClosedAt: Date;
         closeAt: Date;
+        total?: number;
+        arrives?: number;
+        averageCheckTime?: number;
       }>();
 
     if (!event) {
@@ -61,6 +64,48 @@ export async function GET(
         { status: 404 }
       );
     }
+
+    const porterIds = await User.find({ role: "PORTERIA" }).distinct("_id");
+    const [attenderCounts, registeredArrivals] = await Promise.all([
+      Attender.aggregate<{
+        banned: number;
+        paid: number;
+        rejected: number;
+      }>([
+        { $match: { eventId: event._id } },
+        {
+          $group: {
+            _id: null,
+            banned: {
+              $sum: { $cond: [{ $eq: ["$banned", true] }, 1, 0] },
+            },
+            paid: {
+              $sum: { $cond: [{ $eq: ["$paid", true] }, 1, 0] },
+            },
+            rejected: {
+              $sum: { $cond: [{ $eq: ["$rejected", true] }, 1, 0] },
+            },
+          },
+        },
+      ]),
+      Attender.countDocuments({
+        eventId: event._id,
+        userId: { $nin: porterIds },
+        checktime: { $exists: true, $ne: null },
+        $or: [
+          { paid: true },
+          { rejected: { $ne: true }, banned: { $ne: true } },
+        ],
+      }),
+    ]);
+
+    const total = event.total ?? 0;
+    const arrives = event.arrives ?? 0;
+    const statuses = attenderCounts[0] ?? {
+      banned: 0,
+      paid: 0,
+      rejected: 0,
+    };
 
     const importDeadline = getEventImportDeadline(
       event.businessDate,
@@ -73,6 +118,14 @@ export async function GET(
     return NextResponse.json({ ok: true, event: {
       ...event,
       businessDate: event.businessDate.toISOString().slice(0, 10),
+      summary: {
+        attendees: arrives,
+        absentees: Math.max(total - registeredArrivals, 0),
+        attendancePercentage: total > 0 ? (arrives / total) * 100 : 0,
+        banned: statuses.banned,
+        rejected: statuses.rejected,
+        paid: statuses.paid,
+      },
       maxImport: userData.maxAttendersByEvent,
       importDeadline: importDeadline?.toISOString() ?? null,
       actualImported: cantidadInscritos

@@ -11,6 +11,8 @@ import { horaNocturna } from "@/lib/time";
 import Attender from "@/models/attender";
 import Event from "@/models/event";
 import Guest from "@/models/guest";
+import User from "@/models/user";
+import { countsAsAttendance } from "@/lib/attenderStatus";
 
 interface CheckInLookupRequest {
   rut?: string;
@@ -100,12 +102,23 @@ export async function POST(request: NextRequest) {
       eventId: event._id,
       guestId: guest._id,
     }).lean<{
+      banned?: boolean;
       checktime?: Date | null;
+      paid?: boolean;
+      rejected?: boolean;
+      userId: string;
     }>();
-    const registered = Boolean(attender);
-    if (attender?.checktime) {
+    const attended = attender ? countsAsAttendance(attender) : false;
+    const creator = attender
+      ? await User.findById(attender.userId).select("role").lean<{
+          role?: string;
+        }>()
+      : null;
+    const wasImported = Boolean(attender && creator?.role !== "PORTERIA");
+
+    if (attender?.checktime && attended) {
       return NextResponse.json({
-        registered,
+        registered: wasImported,
         guestName: guest.names,
         canConfirm: true,
         warning: [
@@ -116,15 +129,41 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const item = registered
+    if (attender?.checktime && attender.banned === true) {
+      return NextResponse.json({
+        registered: wasImported,
+        guestName: guest.names,
+        canConfirm: true,
+        warning: [
+          {
+            item: `${guest.names} fue marcado como baneado ${horaNocturna(attender.checktime)}`,
+          },
+        ],
+      });
+    }
+
+    if (attender?.checktime && attender.rejected === true) {
+      return NextResponse.json({
+        registered: wasImported,
+        guestName: guest.names,
+        canConfirm: true,
+        warning: [
+          {
+            item: `${guest.names} fue rechazado ${horaNocturna(attender.checktime)}`,
+          },
+        ],
+      });
+    }
+
+    const item = wasImported
       ? `${guest.names} inscrito`
       : `${guest.names} no inscrito`;
 
     return NextResponse.json({
-      registered,
+      registered: wasImported,
       guestName: guest.names,
       canConfirm: true,
-      ...(registered
+      ...(wasImported
         ? { success: [{ item }] }
         : { warning: [{ item }] }),
     });

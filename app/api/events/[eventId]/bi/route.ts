@@ -5,6 +5,7 @@ import Attender from "@/models/attender";
 import BILista from "@/models/biLista";
 import User from "@/models/user";
 import { auth } from "@/app/utils/auth";
+import { countsAsAttendance } from "@/lib/attenderStatus";
 
 export async function GET(
   request: NextRequest,
@@ -39,11 +40,9 @@ export async function GET(
     await connectMongoDB();
 
     const allowedRoles = ["ADMINISTRADOR", "LISTERO", "LISTERO_PRO"];
-    const listeroIds = await User.find({ role: { $in: allowedRoles } })
-      .select("_id")
-      .lean();
-
-    const listerosIdList = listeroIds.map((user) => user._id);
+    const listerosIdList = await User.find({
+      role: { $in: allowedRoles },
+    }).distinct("_id");
 
     if (desdeParam || hastaParam) {
       const desde = desdeParam ? new Date(desdeParam) : new Date(0);
@@ -151,7 +150,13 @@ export async function POST(
     const attenders =
       await Attender.find({
         eventId: eventId,
-      }).lean();
+      }).lean<Array<{
+        userId: { toString(): string };
+        checktime?: Date | null;
+        paid?: boolean;
+        rejected?: boolean;
+        banned?: boolean;
+      }>>();
 
     const biMap = new Map<
       string,
@@ -160,6 +165,8 @@ export async function POST(
         asisten: number;
       }
     >();
+    const porterIds = await User.find({ role: "PORTERIA" }).distinct("_id");
+    const porterIdSet = new Set(porterIds.map((id) => id.toString()));
 
     let total = 0;
     let arrives = 0;
@@ -167,25 +174,21 @@ export async function POST(
     for (const attender of attenders) {
       const userId =
         attender.userId.toString();
+      const attended = countsAsAttendance(attender);
 
-      const current =
-        biMap.get(userId) || {
-          inscritos: 0,
-          asisten: 0,
-        };
-
-      current.inscritos++;
-
-      if (attender.updatedAt > attender.createdAt) {
-        current.asisten++;
+      if (attended) {
         arrives++;
       }
 
-      biMap.set(
-        userId,
-        current
-      );
+      if (porterIdSet.has(userId)) continue;
 
+      const current = biMap.get(userId) || {
+        inscritos: 0,
+        asisten: 0,
+      };
+      current.inscritos++;
+      if (attended) current.asisten++;
+      biMap.set(userId, current);
       total++;
     }
 
