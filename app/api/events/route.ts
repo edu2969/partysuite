@@ -33,7 +33,7 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: "No se encuentra al usuario" })
     }
 
-    const events = await Event.find({})
+    const events = await Event.find({ deleted: { $ne: true } })
       .sort({ businessDate: -1, startsAt: -1 })
       .limit(10)
       .lean();

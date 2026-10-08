@@ -15,6 +15,12 @@ const EventSchema = new Schema(
       trim: true,
     },
 
+    deleted: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
     businessDate: {
       type: Date,
       required: true,
@@ -62,4 +68,16 @@ const EventSchema = new Schema(
   }
 );
 
-export default models.Event || model("Event", EventSchema);
+const EventModel = models.Event || model("Event", EventSchema);
+
+if (!EventModel.schema.path("deleted")) {
+  EventModel.schema.add({
+    deleted: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+  });
+}
+
+export default EventModel;

@@ -46,6 +46,7 @@ export async function GET(
     });    
 
     const event = await Event.findById(eventId)
+      .where({ deleted: { $ne: true } })
       .lean<{
         _id: mongoose.Types.ObjectId;
         name: string;
@@ -215,7 +216,7 @@ export async function PUT(
  
   try {
     const updated = await Event.findByIdAndUpdate(
-      eventId,
+      { _id: eventId, deleted: { $ne: true } },
       { $set: update },
       { new: true, runValidators: true }
     );
@@ -225,5 +226,48 @@ export async function PUT(
     return NextResponse.json(updated);
   } catch (err: unknown) {
     return NextResponse.json({ error: "Error al actualizar el evento" }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ eventId: string }> }
+) {
+  const session = await auth();
+
+  if (!session?.user) {
+    return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+  }
+
+  const userRole = session.user.role;
+  if (userRole !== "ADMINISTRADOR" && userRole !== "NEO") {
+    return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  }
+
+  const { eventId } = await params;
+
+  if (!mongoose.Types.ObjectId.isValid(eventId)) {
+    return NextResponse.json({ error: "id inválido" }, { status: 400 });
+  }
+
+  try {
+    await connectMongoDB();
+    const deletedEvent = await Event.findOneAndUpdate(
+      { _id: eventId, deleted: { $ne: true } },
+      { $set: { deleted: true } },
+      { new: true }
+    );
+
+    if (!deletedEvent) {
+      return NextResponse.json({ error: "Evento no encontrado" }, { status: 404 });
+    }
+
+    return NextResponse.json({ ok: true, deletedId: eventId });
+  } catch (error) {
+    console.error("DELETE /api/events/[eventId]:", error);
+    return NextResponse.json(
+      { error: "Error al eliminar el evento" },
+      { status: 500 }
+    );
   }
 }

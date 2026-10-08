@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { BiParty } from "react-icons/bi";
 import Link from "next/link";
 import { FaPlus } from "react-icons/fa6";
+import { getCurrentBusinessDate } from "@/lib/businessTime";
 import { EVENT_TIME_ZONE } from "@/lib/eventClose";
 
 interface EventData {
@@ -160,7 +161,8 @@ export default function EventsList({
   const [error, setError] = useState("");
   const [deleting, setDeleting] = useState<string | null>(null);
   const [generatingBI, setGeneratingBI] = useState<string | null>(null);
-  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);  
+  const [selectedDeleteEvent, setSelectedDeleteEvent] = useState<EventData | null>(null);
+  const [deleteError, setDeleteError] = useState("");
   const [canImport, setCanImport] = useState(false);
 
   const isNeo = user.role === "NEO";
@@ -276,7 +278,16 @@ export default function EventsList({
     }
   };
 
-  const onDeleteConfirm = async (eventId: string) => {
+  const handleDelete = (event: EventData) => {
+    if (!isAdmin || deleting) return;
+    setDeleteError("");
+    setSelectedDeleteEvent(event);
+  };
+
+  const confirmDelete = async () => {
+    if (!isAdmin || !selectedDeleteEvent || deleting) return;
+
+    const eventId = selectedDeleteEvent._id;
     try {
       setDeleting(eventId);
 
@@ -292,70 +303,18 @@ export default function EventsList({
       if (!response.ok) {
         throw new Error(
           data.message ||
+          data.error ||
           "No fue posible eliminar el evento"
         );
       }
 
-      setEvents((current) =>
-        current.filter(
-          (event) =>
-            event._id !== eventId
-        )
-      );
+      const remainingEvents = events.filter((event) => event._id !== eventId);
+      setEvents(remainingEvents);
+      setCanImport(remainingEvents[0]?.canImport ?? false);
+      setSelectedDeleteEvent(null);
     } catch (error) {
       console.error(error);
-
-      alert(
-        error instanceof Error
-          ? error.message
-          : "Error eliminando evento"
-      );
-    } finally {
-      setDeleting(null);
-    }
-  }
-
-  const handleDelete = async (
-    eventId: string,
-    eventName: string
-  ) => {
-    if (deleting) return;
-
-    const confirmed = window.confirm(
-      `¿Está seguro que desea eliminar el evento "${eventName}"?\n\nTambién se eliminarán sus listas y datos BI.`
-    );
-
-    if (!confirmed) return;
-
-    try {
-      setDeleting(eventId);
-
-      const response = await fetch(
-        `/api/events/${eventId}`,
-        {
-          method: "DELETE",
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.message ||
-          "No fue posible eliminar el evento"
-        );
-      }
-
-      setEvents((current) =>
-        current.filter(
-          (event) =>
-            event._id !== eventId
-        )
-      );
-    } catch (error) {
-      console.error(error);
-
-      alert(
+      setDeleteError(
         error instanceof Error
           ? error.message
           : "Error eliminando evento"
@@ -410,11 +369,16 @@ export default function EventsList({
       ) : (
         <div className="space-y-4">
 
-          {events.map((event, index) => (
-            <div
-              key={event._id}
-              className={`relative rounded-xl border border-slate-800 bg-slate-900/70 p-5 shadow-lg transition hover:border-slate-700 ${index > 0 ? 'opacity-40 grayscale-75' : 'opacity-100 grayscale-0'}`}
-            >
+          {events.map((event, index) => {
+            const isPastEvent =
+              getCurrentBusinessDate(event.timeZone ?? EVENT_TIME_ZONE) >
+              event.businessDate.slice(0, 10);
+
+            return (
+              <div
+                key={event._id}
+                className={`relative rounded-xl border border-slate-800 bg-slate-900/70 p-5 shadow-lg transition hover:border-slate-700 ${index > 0 || isPastEvent ? "opacity-40 grayscale-75" : "opacity-100 grayscale-0"}`}
+              >
 
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 
@@ -474,15 +438,10 @@ export default function EventsList({
                     📥 Importar
                   </button>}                  
 
-                  {isAdmin && new Date(event.closeAt) >= new Date(event.listClosedAt) && (
+                  {isAdmin && (
                     <button
                       type="button"
-                      onClick={() =>
-                        handleDelete(
-                          event._id,
-                          event.name
-                        )
-                      }
+                      onClick={() => handleDelete(event)}
                       disabled={
                         deleting ===
                         event._id
@@ -498,12 +457,65 @@ export default function EventsList({
                   
                 </div>                
               </div>              
-            </div>
-          ))}
+              </div>
+            );
+          })}
 
         </div>
       )}
     </div>
+
+    {selectedDeleteEvent && (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="delete-event-title"
+        aria-describedby="delete-event-description"
+      >
+        <div className="w-full max-w-lg rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl">
+          <h2 id="delete-event-title" className="text-xl font-bold text-white">
+            Confirmar eliminación
+          </h2>
+          <p id="delete-event-description" className="mt-4 text-gray-300">
+            ¿Está seguro que desea eliminar el evento{" "}
+            <strong className="text-white">{selectedDeleteEvent.name}</strong>?
+            El evento se marcará como eliminado; sus listas y datos BI se
+            conservarán.
+          </p>
+
+          {deleteError && (
+            <p className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300" role="alert">
+              {deleteError}
+            </p>
+          )}
+
+          <div className="mt-6 flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedDeleteEvent(null);
+                setDeleteError("");
+              }}
+              disabled={deleting !== null}
+              className="rounded-lg bg-slate-700 px-4 py-2 font-semibold text-white transition hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={confirmDelete}
+              disabled={deleting !== null}
+              className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white transition hover:bg-red-500 disabled:cursor-wait disabled:opacity-50"
+            >
+              {deleting === selectedDeleteEvent._id
+                ? "Eliminando..."
+                : "Eliminar evento"}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
   </main>
   );
 }
