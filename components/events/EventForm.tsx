@@ -206,7 +206,7 @@ export default function EventForm({ eventId }: EventEditProps) {
     <main className="w-full h-screen overflow-y-scroll">
       <div className="mx-auto max-w-6xl p-2 md:p-6">
         <div className="flex justify-end md:justify-start mb-8 space-x-3 text-cyan-400">
-          <MdEditCalendar size={36} />
+          <MdEditCalendar size={36} className="md:ml-12" />
           <h1 className="text-3xl font-bold">
             {event?._id
               ? "Editando Evento"

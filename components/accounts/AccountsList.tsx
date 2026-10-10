@@ -151,10 +151,8 @@ export default function AccountsList() {
         {/* Header */}
         <div className="flex flex-col items-end space-y-3 mb-8 w-full md:flex-row md:items-center md:justify-between md:space-y-0 md:space-x-3">
           <h1 className="flex gap-3 text-3xl font-bold text-white text-nowrap">
-            <span className="text-cyan-400">
-              <GrGroup size={36} />
-            </span>
-            Cuentas
+            <GrGroup size={36} className="md:ml-12"/>
+            <span className="text-cyan-400">Cuentas</span>            
           </h1>
 
           {isAdmin && (

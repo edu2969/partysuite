@@ -39,7 +39,7 @@ export async function GET(
 
     await connectMongoDB();
 
-    const allowedRoles = ["ADMINISTRADOR", "LISTERO", "LISTERO_PRO"];
+    const allowedRoles = ["ADMINISTRADOR", "LISTERO", "LISTERO_PRO", "NEO"];
     const listerosIdList = await User.find({
       role: { $in: allowedRoles },
     }).distinct("_id");

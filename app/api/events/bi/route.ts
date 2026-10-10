@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
     const rpIdList = listeros.map((user) => user._id);
 
     const eventos = await Event.find({
-      date: { $gte: desde, $lte: hastaInclusive },
+      businessDate: { $gte: desde, $lte: hastaInclusive },
     })
       .select("_id arrives")
       .lean();
