@@ -12,7 +12,6 @@ import {
     FaCalendarDays,
     FaGear,
     FaChartColumn,
-    FaScrewdriverWrench,
     FaRightFromBracket,
     FaStar,
     FaListCheck,
