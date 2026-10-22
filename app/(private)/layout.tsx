@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next'
+import { Toaster } from 'sonner'
 import '../globals.css'
 import AuthProviders from '@/app/providers/AuthProvider'
 import NavBar from '@/components/NavBar'
@@ -25,5 +26,6 @@ export default async function RootLayout({
           <UpdatePasswordModal />
           <NavBar />
           {children}
+          <Toaster richColors position="top-right" />
         </AuthProviders>)
 }

@@ -5,11 +5,15 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useDebounce } from "@uidotdev/usehooks";
+import { toast } from "sonner";
 import { GrGroup } from "react-icons/gr";
 import { FaPlus, FaUserPen, FaTrash, FaRotateLeft, FaStar } from "react-icons/fa6";
-import { MdOutlineSelfImprovement } from "react-icons/md";
+import { MdOutlineEditNote, MdOutlineSelfImprovement } from "react-icons/md";
 
 import DeleteAccountModal from "../modals/DeleteAccountModal";
+import BulkSettingsModal, {
+  type BulkSettingsPayload,
+} from "../modals/BulkSettingsModal";
 import Loader from "../prefabs/Loader";
 
 // =========================
@@ -63,6 +67,22 @@ async function deleteAccount(id: string): Promise<void> {
   if (!res.ok) throw new Error("Error al eliminar cuenta");
 }
 
+async function updateBulkSettings(payload: BulkSettingsPayload): Promise<{ modified: number }> {
+  const res = await fetch("/api/accounts/bulk", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    throw new Error(data?.message ?? "Error al actualizar cuentas");
+  }
+
+  return data;
+}
+
 // =========================
 // COMPONENT
 // =========================
@@ -83,6 +103,8 @@ export default function AccountsList() {
   const [deleteModal, setDeleteModal] = useState<{ id: string | null; name?: string }>({
     id: null,
   });
+
+  const [bulkModal, setBulkModal] = useState(false);
 
   // =========================
   // QUERY
@@ -117,6 +139,22 @@ export default function AccountsList() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["accounts"] });
       setDeleteModal({ id: null });
+    },
+  });
+
+  const { mutate: handleBulkSettings, isPending: isBulkPending } = useMutation({
+    mutationFn: updateBulkSettings,
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["accounts"] });
+      setBulkModal(false);
+      toast.success(
+        result.modified > 0
+          ? `Ajustes aplicados a ${result.modified} cuenta(s).`
+          : "No hubo cuentas que actualizar."
+      );
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
     },
   });
 
@@ -155,7 +193,14 @@ export default function AccountsList() {
             <span className="text-cyan-400">Cuentas</span>            
           </h1>
 
-          {isAdmin && (
+          {isAdmin && (<div className="flex gap-3 justify-end">
+            <button
+              onClick={() => setBulkModal(true)}
+              className="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black font-semibold flex items-center gap-2 text-xl"
+            >
+              <MdOutlineEditNote />
+              Ajustes Masivos
+            </button>
             <button
               onClick={() => router.push("/accounts/")}
               className="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black font-semibold flex items-center gap-2 text-xl"
@@ -163,6 +208,7 @@ export default function AccountsList() {
               <FaPlus />
               Nueva cuenta
             </button>
+          </div>
           )}
         </div>
 
@@ -240,6 +286,13 @@ export default function AccountsList() {
         onConfirm={() => deleteModal.id && handleDelete(deleteModal.id)}
         deleteAccount={!showDeleted}
         userName={deleteModal.name ?? ""}
+      />
+
+      <BulkSettingsModal
+        show={bulkModal}
+        isPending={isBulkPending}
+        onClose={() => setBulkModal(false)}
+        onSubmit={handleBulkSettings}
       />
     </main>
   );
